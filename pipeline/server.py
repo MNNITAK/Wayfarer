@@ -146,10 +146,17 @@ class Handler(BaseHTTPRequestHandler):
         if size <= 0:
             return self.reject('empty upload')
         uid = uuid.uuid4().hex[:10]
-        UPLOADS.mkdir(parents=True, exist_ok=True)
         video = UPLOADS / f'{uid}{ext}'
-        with open(video, 'wb') as f:  # stream to disk: phone videos are often > 1 GB
-            left = size
+        if not self.save_body(video):
+            return self.send_json({'error': 'upload interrupted'}, 400)
+        uploads[uid] = {'path': str(video), 'name': filename, 'sizeMB': round(size / 1e6, 1)}
+        self.send_json({'upload': uid}, 201)
+
+    def save_body(self, path):
+        """Stream the raw request body to `path` (phone videos are often > 1 GB). False if the client hung up."""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        left = int(self.headers.get('Content-Length', 0))
+        with open(path, 'wb') as f:
             while left > 0:
                 chunk = self.rfile.read(min(left, 1 << 20))
                 if not chunk:
@@ -157,10 +164,9 @@ class Handler(BaseHTTPRequestHandler):
                 f.write(chunk)
                 left -= len(chunk)
         if left > 0:
-            video.unlink(missing_ok=True)
-            return self.send_json({'error': 'upload interrupted'}, 400)
-        uploads[uid] = {'path': str(video), 'name': filename, 'sizeMB': round(size / 1e6, 1)}
-        self.send_json({'upload': uid}, 201)
+            path.unlink(missing_ok=True)
+            return False
+        return True
 
     def create_job(self):
         try:
@@ -178,17 +184,23 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({'error': 'ceiling should be between 1.8 and 12 m'}, 400)
         quality = q.get('quality') if q.get('quality') in ('fast', 'default', 'high', 'max') else None
 
-        jid = uuid.uuid4().hex[:8]
-        files = [uploads[i] for i in ids]
-        title = (q.get('title') or '').strip()[:40] or Path(files[0]['name']).stem
-        scene = f'{slug(title)}-{jid[:4]}'
-        job = {'id': jid, 'scene': scene, 'title': title, 'ceiling': ceiling, 'quality': quality, 'aiRepair': bool(q.get('aiRepair')), 'maskPeople': bool(q.get('maskPeople')),
-               'video': [f['path'] for f in files], 'clips': [f['name'] for f in files],
-               'log': str(UPLOADS / f'{scene}.log'), 'status': 'queued', 'step': 0, 'stepName': 'upload',
-               'created': time.time(), 'sizeMB': round(sum(f['sizeMB'] for f in files), 1)}
-        jobs[jid] = job
-        threading.Thread(target=run_job, args=(job,), daemon=True).start()
-        self.send_json({'id': jid, 'scene': scene}, 201)
+        job = start_job([uploads[i] for i in ids], q.get('title'), ceiling, quality, q)
+        self.send_json({'id': job['id'], 'scene': job['scene']}, 201)
+
+
+def start_job(files, title, ceiling, quality, q):
+    """files: [{path, name, sizeMB}]; q: the request options (aiRepair, maskPeople)."""
+    jid = uuid.uuid4().hex[:8]
+    title = (title or '').strip()[:40] or Path(files[0]['name']).stem
+    scene = f'{slug(title)}-{jid[:4]}'
+    UPLOADS.mkdir(parents=True, exist_ok=True)
+    job = {'id': jid, 'scene': scene, 'title': title, 'ceiling': ceiling, 'quality': quality, 'aiRepair': bool(q.get('aiRepair')), 'maskPeople': bool(q.get('maskPeople')),
+           'video': [f['path'] for f in files], 'clips': [f['name'] for f in files],
+           'log': str(UPLOADS / f'{scene}.log'), 'status': 'queued', 'step': 0, 'stepName': 'upload',
+           'created': time.time(), 'sizeMB': round(sum(f['sizeMB'] for f in files), 1)}
+    jobs[jid] = job
+    threading.Thread(target=run_job, args=(job,), daemon=True).start()
+    return job
 
 
 if __name__ == '__main__':
