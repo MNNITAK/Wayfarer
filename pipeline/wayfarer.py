@@ -137,8 +137,9 @@ def drop_stray_cameras(model):
     return len(bad)
 
 
-def step_sfm(frames, ns, matching, mapper, mask_dir=None):
-    """COLMAP run directly: nerfstudio's wrapper disables loop detection and only ever reads sparse/0."""
+def colmap_sparse(frames, ns, matching, mapper, mask_dir=None):
+    """Features, matching and mapping into ns/colmap/sparse; the largest model becomes sparse/0 with stray cameras
+    dropped. Returns (registered frames, frame count, model count). No gating: the caller decides what is enough."""
     cm = ns / 'colmap'
     db = cm / 'database.db'
     matched = cm / 'matched.ok'  # features + matches are the slow part: reuse them if a run was interrupted
@@ -174,7 +175,7 @@ def step_sfm(frames, ns, matching, mapper, mask_dir=None):
 
     models = sorted((registered_images(m), m) for m in (cm / 'sparse').iterdir() if (m / 'images.bin').exists())
     if not models:
-        sys.exit('\nFAILED: COLMAP produced no model. ' + HINTS['colmap'])
+        return 0, n_frames, 0
     best_n, best = models[-1]
     if best.name != '0':  # nerfstudio reads sparse/0: make that the largest model
         tmp = best.with_name('_best')
@@ -182,11 +183,18 @@ def step_sfm(frames, ns, matching, mapper, mask_dir=None):
         (cm / 'sparse' / '0').rename(cm / 'sparse' / str(len(models)))
         tmp.rename(cm / 'sparse' / '0')
     stray = drop_stray_cameras(cm / 'sparse' / '0')
-    best_n -= stray
+    return best_n - stray, n_frames, len(models)
+
+
+def step_sfm(frames, ns, matching, mapper, mask_dir=None):
+    """COLMAP run directly: nerfstudio's wrapper disables loop detection and only ever reads sparse/0."""
+    best_n, n_frames, n_models = colmap_sparse(frames, ns, matching, mapper, mask_dir)
+    if not n_models:
+        sys.exit('\nFAILED: COLMAP produced no model. ' + HINTS['colmap'])
     ratio = best_n / n_frames
-    print(f'  registered {best_n}/{n_frames} frames ({ratio:.0%}) in the largest of {len(models)} model(s)')
-    if len(models) > 1:
-        print(f'  WARNING: the capture split into {len(models)} pieces, so some rooms are missing. Walk through doorways '
+    print(f'  registered {best_n}/{n_frames} frames ({ratio:.0%}) in the largest of {n_models} model(s)')
+    if n_models > 1:
+        print(f'  WARNING: the capture split into {n_models} pieces, so some rooms are missing. Walk through doorways '
               'slowly with overlap (docs/SOP.md).')
     if ratio < 0.5:
         sys.exit(f'\nFAILED: only {ratio:.0%} of frames registered. ' + HINTS['colmap'])
@@ -195,7 +203,7 @@ def step_sfm(frames, ns, matching, mapper, mask_dir=None):
     if mask_dir:  # training ignores masked pixels; other frames supply the real background
         from masks import attach_to_dataset
         attach_to_dataset(ns, frames, mask_dir)
-    return {'framesRegistered': best_n, 'models': len(models)}
+    return {'framesRegistered': best_n, 'models': n_models}
 
 
 def latest_config(outputs):
