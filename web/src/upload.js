@@ -1,4 +1,6 @@
 // Wayfarer Studio: upload a capture, follow the pipeline, open the twin.
+import { uploadFile, postJson } from './api.js';
+
 const $ = (id) => document.getElementById(id);
 const form = $('new-job');
 let files = [];
@@ -30,19 +32,10 @@ const drop = $('drop');
 ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
 drop.addEventListener('drop', (e) => pick(e.dataTransfer.files));
 
-// XHR (not fetch) for upload progress on multi-GB videos
-function uploadOne(f, done, total) {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `/api/uploads?${new URLSearchParams({ filename: f.name })}`);
-    xhr.upload.onprogress = (ev) => { $('upload-bar').firstElementChild.style.width = `${((done + ev.loaded) / total) * 100}%`; };
-    xhr.onload = () => {
-      const res = JSON.parse(xhr.responseText || '{}');
-      xhr.status === 201 ? resolve(res.upload) : reject(new Error(res.error || `upload failed (${xhr.status})`));
-    };
-    xhr.onerror = () => reject(Object.assign(new Error('server unreachable'), { down: true }));
-    xhr.send(f);
-  });
+async function uploadOne(f, done, total) {
+  const res = await uploadFile(`/api/uploads?${new URLSearchParams({ filename: f.name })}`, f,
+    (loaded) => { $('upload-bar').firstElementChild.style.width = `${((done + loaded) / total) * 100}%`; });
+  return res.upload;
 }
 
 form.addEventListener('submit', async (e) => {
@@ -54,12 +47,7 @@ form.addEventListener('submit', async (e) => {
     const total = files.reduce((s, f) => s + f.size, 0), ids = [];
     let done = 0;
     for (const f of files) { ids.push(await uploadOne(f, done, total)); done += f.size; }
-    const r = await fetch('/api/jobs', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uploads: ids, title: form.title.value.trim(), ceiling: form.ceiling.value, quality: form.quality.value, aiRepair: form.airepair.checked, maskPeople: form.maskpeople.checked }),
-    });
-    const res = await r.json();
-    if (r.status !== 201) throw new Error(res.error || `could not start (${r.status})`);
+    const res = await postJson('/api/jobs', { uploads: ids, title: form.title.value.trim(), ceiling: form.ceiling.value, quality: form.quality.value, aiRepair: form.airepair.checked, maskPeople: form.maskpeople.checked });
     try { localStorage.setItem('wayfarer:job', res.id); } catch { /* storage blocked */ }
     files = []; renderClips();
     follow(res.id);
