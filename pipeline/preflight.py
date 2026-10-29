@@ -307,6 +307,7 @@ def review(clips, work, log=print, quick_sfm=None, retake_from=None):
         quick_sfm = shutil.which('colmap') is not None
     if not quick_sfm:
         done('sfm', 'skipped', 'COLMAP not found; the main build will check camera poses')
+        done('angles', 'skipped', 'needs the quick COLMAP model')
         return finish(True)
 
     log('[2/3] sfm (quick COLMAP)')
