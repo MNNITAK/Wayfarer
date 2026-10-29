@@ -6,6 +6,13 @@
   POST /api/jobs   {"uploads": [ids...], "title", "ceiling", "quality"}  (several clips -> one connected space)
   GET  /api/jobs/<id>                                              -> status, step, log tail
   GET  /api/scenes                                                 -> reconstructed scenes
+
+Capture Coach sessions (a capture is checked and re-filmed until it meets the pipeline's needs, then built):
+  POST /api/sessions   {"title", "ceiling"}                        -> {id}
+  GET  /api/sessions/<id>                                          -> stage, clips, reviews (+ log tail)
+  GET  /api/sessions/<id>/files/<path>                             -> review thumbnails, photos
+  POST /api/sessions/<id>/clips?filename=walk.mp4  body = video   -> runs pipeline/preflight.py on all clips
+  POST /api/sessions/<id>/build {"quality", "force"}               -> starts the normal job once a review passed
 """
 import json
 import os
@@ -23,11 +30,14 @@ from urllib.parse import urlparse, parse_qs
 ROOT = Path(__file__).resolve().parent.parent
 UPLOADS = ROOT / 'work' / 'uploads'
 SCENES = ROOT / 'web' / 'public' / 'scenes'
+SESSIONS = ROOT / 'work' / 'sessions'
 PORT = int(os.environ.get('WAYFARER_PORT', 8765))
 STEP_RE = re.compile(r'^\[(\d)/5\] (\w+)')
 VIDEO_EXT = {'.mp4', '.mov', '.m4v', '.mkv', '.avi', '.webm'}
 jobs, uploads = {}, {}  # ponytail: in-memory, one machine, one user; persist to disk if jobs must survive restarts
-lock = threading.Lock()  # one GPU -> one training job at a time
+lock = threading.Lock()  # one GPU -> one training job (or quick-SfM review) at a time
+sessions = {}
+FILE_TYPES = {'.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png'}
 
 
 def slug(s):
@@ -80,6 +90,52 @@ def run_job(job):
         job['finished'] = time.time()
 
 
+def session_dir(s):
+    return SESSIONS / s['id']
+
+
+def save_session(s):
+    session_dir(s).mkdir(parents=True, exist_ok=True)
+    (session_dir(s) / 'session.json').write_text(json.dumps(s, indent=1), encoding='utf-8')
+
+
+def load_sessions():
+    for f in SESSIONS.glob('*/session.json') if SESSIONS.exists() else []:
+        s = json.loads(f.read_text(encoding='utf-8'))
+        for rev in s['reviews']:
+            if rev['status'] in ('queued', 'running'):  # the server stopped mid-review
+                rev['status'] = 'interrupted'
+        sessions[s['id']] = s
+
+
+def run_review(s, rev):
+    """pipeline/preflight.py over every clip of the session; its report decides the next stage."""
+    rev['status'] = 'queued'
+    save_session(s)
+    with lock:  # quick SfM shares the GPU with builds
+        rev['status'] = 'running'
+        save_session(s)
+        cmd = [sys.executable, str(ROOT / 'pipeline' / 'preflight.py'), *rev['clips'], '--work', rev['work']]
+        if s.get('retakeFrom') is not None:
+            cmd += ['--retake-from', str(s['retakeFrom'])]
+        with open(rev['log'], 'w', encoding='utf-8', errors='replace') as log:
+            p = subprocess.run(cmd, cwd=ROOT, env=pipeline_env(), stdout=log, stderr=subprocess.STDOUT)
+    report_file = Path(rev['work']) / 'report.json'
+    if report_file.exists():
+        report = json.loads(report_file.read_text(encoding='utf-8'))
+    else:
+        report = {'pass': False, 'checks': [{'name': 'preflight', 'status': 'fail',
+                                             'summary': f'the check crashed (exit {p.returncode}); see the log'}],
+                  'issues': [], 'retakes': []}
+    rel = Path(rev['work']).relative_to(session_dir(s)).as_posix()
+    for i in report['issues']:
+        if i.get('thumb'):
+            i['thumbUrl'] = f"/api/sessions/{s['id']}/files/{rel}/{i['thumb']}"
+    rev['report'], rev['status'] = report, 'done'
+    s['stage'] = 'ready' if report['pass'] else 'retake'
+    save_session(s)
+
+
 def tail(path, n=40):
     try:
         text = Path(path).read_text(encoding='utf-8', errors='replace')
@@ -119,6 +175,27 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({k: v for k, v in job.items() if k not in ('video', 'log')} | {'log': tail(job['log'])})
         if url.path == '/api/jobs':
             return self.send_json([{k: v for k, v in j.items() if k not in ('video', 'log')} for j in jobs.values()])
+        if url.path.startswith('/api/sessions/'):
+            return self.get_session(url.path.split('/')[3:])
+        self.send_json({'error': 'not found'}, 404)
+
+    def get_session(self, parts):
+        s = sessions.get(parts[0])
+        if not s:
+            return self.send_json({'error': 'no such session'}, 404)
+        if len(parts) == 1:
+            last = s['reviews'][-1] if s['reviews'] else None
+            return self.send_json(s | {'reviewLog': tail(last['log'], 12) if last else []})
+        if parts[1] == 'files' and len(parts) > 2:
+            f = (session_dir(s) / '/'.join(parts[2:])).resolve()
+            if f.suffix.lower() not in FILE_TYPES or not f.is_relative_to(session_dir(s).resolve()) or not f.is_file():
+                return self.send_json({'error': 'not found'}, 404)
+            body = f.read_bytes()
+            self.send_response(200)
+            self.send_header('Content-Type', FILE_TYPES[f.suffix.lower()])
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            return self.wfile.write(body)
         self.send_json({'error': 'not found'}, 404)
 
     def reject(self, msg, code=400):
@@ -134,7 +211,76 @@ class Handler(BaseHTTPRequestHandler):
             return self.upload(url)
         if url.path == '/api/jobs':
             return self.create_job()
+        if url.path == '/api/sessions':
+            return self.create_session()
+        if url.path.startswith('/api/sessions/'):
+            parts = url.path.split('/')[3:]
+            s = sessions.get(parts[0])
+            if not s:
+                return self.reject('no such session', 404)
+            if parts[1:] == ['clips']:
+                return self.add_clip(s, url)
+            if parts[1:] == ['build']:
+                return self.build_session(s)
         self.reject('not found', 404)
+
+    def read_json(self):
+        try:
+            return json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))) or b'{}')
+        except ValueError:
+            return None
+
+    def create_session(self):
+        q = self.read_json()
+        if q is None:
+            return self.send_json({'error': 'body must be JSON'}, 400)
+        sid = uuid.uuid4().hex[:8]
+        s = {'id': sid, 'title': (q.get('title') or '').strip()[:40], 'ceiling': q.get('ceiling') or None,
+             'created': time.time(), 'stage': 'record', 'clips': [], 'reviews': [], 'retakeFrom': None, 'job': None}
+        sessions[sid] = s
+        save_session(s)
+        self.send_json({'id': sid}, 201)
+
+    def add_clip(self, s, url):
+        """A recorded take or a retake; every clip so far is reviewed together (they merge into one space)."""
+        filename = Path(parse_qs(url.query).get('filename', ['capture.mp4'])[0]).name
+        ext = Path(filename).suffix.lower()
+        if ext not in VIDEO_EXT:
+            return self.reject(f'unsupported file type {ext or "(none)"} in {filename}')
+        if int(self.headers.get('Content-Length', 0)) <= 0:
+            return self.reject('empty upload')
+        n = len(s['clips'])
+        path = session_dir(s) / 'clips' / f'{n:02d}_{slug(Path(filename).stem)}{ext}'
+        if not self.save_body(path):
+            return self.send_json({'error': 'upload interrupted'}, 400)
+        last = s['reviews'][-1] if s['reviews'] else None
+        if last and last.get('report') and not last['report']['pass'] and s.get('retakeFrom') is None:
+            s['retakeFrom'] = n  # clips from here on are retakes for the problems found so far
+        s['clips'].append({'name': filename, 'path': str(path), 'sizeMB': round(path.stat().st_size / 1e6, 1)})
+        work = session_dir(s) / 'reviews' / str(len(s['reviews']))
+        rev = {'n': len(s['reviews']), 'clips': [c['path'] for c in s['clips']], 'work': str(work),
+               'log': str(work.parent / f'{work.name}.log'), 'status': 'queued', 'report': None}
+        work.parent.mkdir(parents=True, exist_ok=True)
+        s['reviews'].append(rev)
+        s['stage'] = 'review'
+        threading.Thread(target=run_review, args=(s, rev), daemon=True).start()
+        self.send_json({'clip': n, 'review': rev['n']}, 201)
+
+    def build_session(self, s):
+        q = self.read_json() or {}
+        last = s['reviews'][-1] if s['reviews'] else None
+        passed = bool(last and last.get('report') and last['report']['pass'])
+        if not s['clips'] or not (passed or q.get('force')):
+            return self.send_json({'error': 'the capture has not passed its review yet'}, 400)
+        quality = q.get('quality') if q.get('quality') in ('fast', 'default', 'high', 'max') else None
+        try:
+            ceiling = float(s['ceiling']) if s.get('ceiling') else None
+        except (TypeError, ValueError):
+            ceiling = None
+        job = start_job(s['clips'], s['title'], ceiling, quality, q)
+        s['job'], s['stage'], s['forced'] = job['id'], 'built', not passed
+        save_session(s)
+        self.send_json({'id': job['id'], 'scene': job['scene']}, 201)
 
     def upload(self, url):
         """One video per request (raw body); a job then references one or more uploads."""
@@ -206,5 +352,6 @@ def start_job(files, title, ceiling, quality, q):
 if __name__ == '__main__':
     if not shutil.which('colmap', path=pipeline_env()['PATH']):
         print('WARNING: colmap not found on PATH (set WAYFARER_COLMAP to its folder). Uploads will fail at the sfm step.')
+    load_sessions()
     print(f'Wayfarer job server on http://127.0.0.1:{PORT}')
     ThreadingHTTPServer(('127.0.0.1', PORT), Handler).serve_forever()
