@@ -52,7 +52,9 @@ async function boot() {
     $('status').textContent = 'Loading 3D capture…';
     const { SparkRenderer, SplatMesh } = await import('@sparkjsdev/spark');
     // sqrt(5) std-devs instead of sqrt(8): visually identical indoors, noticeably cheaper fill rate on laptops
-    scene.add(new SparkRenderer({ renderer, maxStdDev: Math.sqrt(5) }));
+    // LoD foveation defaults to a 90° full-detail cone, narrower than our ~112° diagonal view on 16:9,
+    // which blurs the screen edges; widen it to cover the whole frustum (incl. ultrawide) and only coarsen off-screen
+    scene.add(new SparkRenderer({ renderer, maxStdDev: Math.sqrt(5), coneFov0: 130, coneFov: 160 }));
     splat = new SplatMesh({
       url: new URL(data.splat.url, location.origin + sceneDir).href,
       lod: true, // builds a level-of-detail tree in a worker: fixed splat budget per frame on any GPU
