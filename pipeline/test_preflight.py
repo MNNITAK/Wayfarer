@@ -114,6 +114,11 @@ if shutil.which('ffmpeg'):
         r = review([d / 'walk.mp4'], d / 'check', log=lambda *_: None, quick_sfm=False)
         assert not r['pass'] and r['retakes'] and r['checks'][1]['status'] == 'skipped', r
         assert (d / 'check' / 'report.json').exists()
-    print('ok: review() on a video fails the blurred take and suggests a retake')
+        shutil.copy(d / 'walk.mp4', d / 'retake.mp4')  # stands in for a clean retake
+        r = review([d / 'walk.mp4', d / 'retake.mp4'], d / 'check2', log=lambda *_: None, quick_sfm=False,
+                   retake_from=1)
+        warned = [i for i in r['issues'] if i['clip'] == 'walk.mp4' and 'covered by a retake' in i['message']]
+        assert warned and all(i['severity'] == 'warn' for i in warned), r['issues']
+    print('ok: review() fails the blurred take, suggests a retake, and treats the stretch as covered once it is filmed')
 else:
     print('skip: ffmpeg not on PATH, end-to-end video check not run')

@@ -147,7 +147,8 @@ def read_gray(paths):
     return [np.asarray(Image.open(p).convert('L'), dtype=np.float32) for p in paths]
 
 
-def check_metrics(clips, tmp, log=print):
+def check_metrics(clips, tmp, log=print, retake_from=None):
+    """Clips before `retake_from` already have retakes filmed for their problems: those stretches only warn now."""
     issues, sharp, seconds = [], [], 0.0
     for i, src in enumerate(clips):
         d = tmp / f'm{i:02d}'
@@ -157,6 +158,10 @@ def check_metrics(clips, tmp, log=print):
         frames = sorted(d.glob('*.jpg'))
         m = frame_metrics(read_gray(frames))
         found, frac = clip_issues(m, Path(src).name)
+        if retake_from is not None and i < retake_from:
+            for f in found:
+                if f['severity'] == 'fail':
+                    f['severity'], f['message'] = 'warn', f['message'] + ' (covered by a retake)'
         issues += found
         sharp.append(frac * len(frames))
         seconds += len(frames) / FPS
@@ -259,7 +264,7 @@ def camera_centers(images):
 
 
 # ---------- the review ----------
-def review(clips, work, log=print, quick_sfm=None):
+def review(clips, work, log=print, quick_sfm=None, retake_from=None):
     """Run the checks; returns the report dict (also written to work/report.json)."""
     work = Path(work)
     work.mkdir(parents=True, exist_ok=True)
@@ -288,7 +293,7 @@ def review(clips, work, log=print, quick_sfm=None):
         tmp = Path(tmp)
         log('[1/3] metrics')
         try:
-            issues, stats = check_metrics(clips, tmp, log)
+            issues, stats = check_metrics(clips, tmp, log, retake_from)
         except SystemExit as e:
             done('metrics', 'fail', f'could not read the video ({e})')
             return finish(False)
@@ -363,11 +368,13 @@ def main():
     ap.add_argument('clips', nargs='+', type=Path, help='capture video(s), in order')
     ap.add_argument('--work', type=Path, required=True, help='scratch dir; report.json and thumbs/ are written here')
     ap.add_argument('--no-sfm', action='store_true', help='skip the quick COLMAP and view-angle checks')
+    ap.add_argument('--retake-from', type=int, help='index of the first retake clip; earlier clips\' local problems '
+                                                    'count as covered')
     a = ap.parse_args()
     for c in a.clips:
         if not c.exists():
             sys.exit(f'input not found: {c}')
-    r = review(a.clips, a.work, quick_sfm=False if a.no_sfm else None)
+    r = review(a.clips, a.work, quick_sfm=False if a.no_sfm else None, retake_from=a.retake_from)
     print('PASS: ready to build' if r['pass'] else f"FAIL: {len(r['retakes'])} retake(s) suggested")
     for t in r['retakes']:
         print('  -', t['instruction'])
