@@ -42,6 +42,7 @@ For **each room**:
 3. **Tilt slightly down (10–15°)** most of the time. The floor must be visible: the pipeline detects the floor plane to level the model and to decide where you can walk.
 4. **One slow ceiling sweep per room.** Point up for ~3 s. The ceiling plane plus your tape measurement gives the metric scale.
 5. **Low pass around big furniture (optional).** One loop at ~0.8 m around beds/tables fills in the gaps under and around them.
+6. **Along-the-wall pass.** Walk along each wall 0.5–1 m away with the camera pointing the way you walk, angled 30–45° toward the wall. Then make a few slow walks from the centre to each wall and back, and one slow 360° turn in the middle. The perimeter loop only sees each wall head-on from across the room; in the twin you walk *along* the walls, and a wall never filmed from that angle turns into fibrous streaks. Rule of thumb: **film from where people will stand in the viewer, looking where they will look.**
 
 **Scale marker:** at the start, film the marker for about 5 s from 3 or more angles (left, centre, right) at 0.5–2 m, so it fills at least a tenth of the frame.
 
