@@ -55,6 +55,27 @@ Typical timings on an RTX 4070 Laptop GPU for a 2-bedroom flat (~350 frames):
 
 Use `--quality fast` (7k iterations, about 5 min) for a quick check before the full run.
 
+## 4. Capture Coach on a phone (optional)
+
+`start.bat` also starts an HTTPS server on port 5174 for the Capture Coach, because phone browsers only allow the
+camera and motion sensors on secure pages. The Studio shows the exact address (`https://<PC IP>:5174/capture.html`).
+
+- Phone and PC on the same Wi-Fi. Allow port 5174 through Windows Firewall when it asks (private networks).
+- The certificate is self-signed: accept the browser warning once on the phone.
+- On iPhone, tap *Allow* when asked for motion access; without it the turn-speed and coverage checks are off.
+- Browser recording cannot lock exposure on every phone. If the review reports exposure jumps, film with the phone's
+  camera app (AE/AF lock on) and use *Check a video I already filmed* instead.
+
+AI survey, verification and coverage review (optional):
+
+```bash
+uv pip install --python .venv-ns/Scripts/python.exe anthropic
+setx ANTHROPIC_API_KEY "sk-ant-..."     # then restart start.bat
+```
+
+`WAYFARER_COACH_MODEL` picks another Claude model (default `claude-opus-5-5`). Each plan or review sends about 10–25
+images.
+
 ## Troubleshooting
 
 | Symptom | Fix |

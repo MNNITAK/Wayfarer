@@ -48,7 +48,7 @@ Open `?scene=<name>` to load a reconstructed scene from `web/public/scenes/<name
 
 ## Capture → twin
 
-1. Film the space following the **[capture SOP](docs/SOP.md)**.
+1. Film the space following the **[capture SOP](docs/SOP.md)**, or let the **Capture Coach** guide you (below).
 2. Install the pipeline once: **[docs/SETUP.md](docs/SETUP.md)**.
 3. Double-click **`start.bat`**, drop the video (or several overlapping room clips) into **Wayfarer Studio**, and press *Build twin*. You'll see live progress through each step, then an *Open twin* button.
 
@@ -57,6 +57,28 @@ Or from the command line:
 ```bash
 python pipeline/wayfarer.py walk.mp4 --name home --ceiling 2.75
 ```
+
+### Capture Coach
+
+Recording a perfect video is hard, and a bad take used to show up only after the long build. The Capture Coach
+(`capture.html`, open it on your phone at the `https://<PC IP>:5174/capture.html` address the Studio shows) keeps
+checking until the capture meets what the pipeline needs ([`pipeline/capture_requirements.md`](pipeline/capture_requirements.md)):
+
+1. **Survey (optional, AI):** take 8–15 photos of the space. A Claude agent writes a plan for *this* room: what to fix
+   (fan off, mirror covered, TV off…), where the marker goes, and a filming route naming real landmarks.
+2. **Prepare:** fix each item and photograph it; the agent verifies the photo. Recording unlocks when every item is
+   verified or deliberately skipped.
+3. **Record:** a live guide on the phone (turn speed from the gyro, blur, light, blank walls, tilt, a coverage ring
+   for edge and along-the-wall passes, back-at-start) with the plan's route as step cards.
+4. **Review:** `pipeline/preflight.py` checks the take in minutes: blur/turn/light stretches with timestamps, a quick
+   COLMAP run on 120 small frames (the same >= 90 % registration gate as the build), and a view-angle check that flags
+   walls filmed only head-on (they turn fibrous in the twin); then the agent checks the planned route was covered.
+   Failures come back as short **retake** clips to film, not a full re-shoot. Once it passes, *Build twin* starts the
+   normal pipeline.
+
+The AI steps need `pip install anthropic` in the pipeline venv and an API key (`ANTHROPIC_API_KEY`); without them the
+coach still runs steps 3 and 4. Check a finished video from the command line with
+`python pipeline/preflight.py walk.mp4 --work work/check`.
 
 This writes `web/public/scenes/home/` (`scene.sog`, `scene.json`, and a `grid.png` preview). Each step is resumable, and `--force <step>` re-runs from that step.
 
@@ -72,7 +94,10 @@ pipeline/
   floorplan.py      vector floor plan (SVG) from the grid, for docs and slides
   surfaces.py       floor/ceiling fill: real pixels projected from the frames, LaMa generative inpainting for unseen parts
   train_mcmc.py     gsplat MCMC trainer (memory-capped fallback: --trainer mcmc)
-  server.py         local job server behind the upload studio (stdlib only)
+  server.py         local job server behind the upload studio and the Capture Coach (stdlib only)
+  preflight.py      fast capture check: blur/turn/light, quick COLMAP gate, view-angle coverage, retakes
+  coach.py          Capture Coach agents (Claude): room plan from photos, photo-verified fixes, route coverage
+  capture_requirements.md  what the pipeline needs from a capture; the coach's brief and the checks' numbers
   test_navgrid.py   synthetic-room self-check (python pipeline/test_navgrid.py)
   test_marker_scale.py  rendered-marker self-check
 web/
@@ -81,6 +106,8 @@ web/
   src/minimap.js    top-down map
   src/main.js       scene loading, splat rendering, POIs, search, navigation UI
   upload.html       Wayfarer Studio: drag-and-drop capture upload with live pipeline progress
+  capture.html      Capture Coach: survey, prepare, live-guided recording, review and retakes (phone)
+  src/capture-metrics.js  live capture checks and the room coverage guide (pure, unit-tested)
   test/             node:test unit tests (npm test)
   public/scenes/    one folder per twin; demo/ is a procedural sample
 docs/
@@ -108,6 +135,8 @@ The grid is plain text on purpose: you can fix a wall the scan missed in any tex
 ```bash
 cd web && npm test                  # pathfinding, collision, instructions
 python pipeline/test_navgrid.py     # floor/scale/wall recovery on a synthetic splat
+python pipeline/test_preflight.py   # capture check: blur/turn/dark/blank stretches, view angles, retakes
+python pipeline/test_coach.py       # coach agents with the Claude API stubbed
 .venv-ns/Scripts/python pipeline/test_marker_scale.py   # ArUco scale recovery on rendered views
 ```
 
