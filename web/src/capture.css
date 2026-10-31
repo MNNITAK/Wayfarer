@@ -1,6 +1,8 @@
 .coach main { max-width: 820px; }
 .stage[hidden], #plan-box[hidden], #build-box[hidden], #step-card[hidden], .coach [hidden] { display: none !important; }
-.coach .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.coach .actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 0; }
+/* the viewer's style.css hides `.actions button:last-child` on narrow screens (its top bar); not here */
+.coach .actions button { display: inline-block; }
 .coach .note { color: var(--muted); font-size: 0.85em; margin: 12px 0 0; }
 .coach label.button {
   display: inline-flex; align-items: center; cursor: pointer; background: #1b3150; border: 1px solid var(--line);
@@ -56,3 +58,24 @@
 #build-box { display: flex; gap: 10px; align-items: end; margin-top: 14px; flex-wrap: wrap; }
 #build-box label { display: grid; gap: 4px; color: var(--muted); font-size: 0.85em; }
 #plan-box { margin-top: 14px; }
+
+/* survey + prepare */
+.thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; margin-top: 10px; }
+.thumbs img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 6px; }
+#items { list-style: none; padding: 0; display: grid; gap: 10px; }
+#items li { padding: 10px 12px; border-radius: 10px; background: #0a1422; border-left: 3px solid var(--line); }
+#items li.must { border-left-color: #e66; }
+#items li .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+#items li p { margin: 4px 0; color: var(--muted); font-size: 0.9em; }
+#items li .reason { color: var(--accent); }
+#items li.ok { border-left-color: #2e7d5b; }
+#items li .actions { margin-top: 6px; }
+#items li img { width: 72px; border-radius: 6px; }
+.pill.passed, .pill.done { background: #133a2a; color: #6fe0a8; }
+.pill.waived { background: #1b3150; color: var(--muted); }
+.pill.checking { background: #3a2a14; color: var(--accent); }
+details { margin-top: 10px; color: var(--muted); }
+details summary { cursor: pointer; }
+#route li, #settings li { margin: 6px 0; font-size: 0.9em; }
+#step-card strong { display: block; margin: 2px 0; }
+#step-card .actions { margin-top: 8px; }

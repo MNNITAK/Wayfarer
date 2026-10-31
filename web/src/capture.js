@@ -13,7 +13,7 @@ const store = {
 };
 
 function show(stage) {
-  for (const s of ['start', 'record', 'review', 'built']) $(`stage-${s}`).hidden = s !== stage;
+  for (const s of ['start', 'survey', 'prepare', 'record', 'review', 'built']) $(`stage-${s}`).hidden = s !== stage;
 }
 
 function fail(err) {
@@ -47,8 +47,25 @@ const rec = { stream: null, recorder: null, chunks: [], guide: null, timer: null
 const canvas = document.createElement('canvas');
 const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
+// the AI plan's route as cards while recording
+function renderStep() {
+  const route = session?.plan?.route ?? [];
+  $('step-card').hidden = !route.length;
+  if (!route.length) return;
+  rec.step = Math.max(0, Math.min(route.length - 1, rec.step ?? 0));
+  const st = route[rec.step];
+  $('step-pos').textContent = `Step ${rec.step + 1} of ${route.length} · ${st.room}`;
+  $('step-title').textContent = st.title;
+  $('step-detail').textContent = st.detail + (st.landmarks?.length ? ` Keep in view: ${st.landmarks.join(', ')}.` : '');
+  $('step-prev').disabled = rec.step === 0;
+  $('step-next').textContent = rec.step === route.length - 1 ? 'Last step' : 'Next step';
+}
+$('step-prev').onclick = () => { rec.step--; renderStep(); };
+$('step-next').onclick = () => { rec.step++; renderStep(); };
+
 async function openCamera() {
   show('record');
+  renderStep();
   $('rec-toggle').textContent = 'Start recording';
   $('next-room').disabled = true;
   try {
@@ -221,14 +238,20 @@ async function poll() {
   } catch { $('server-down').hidden = false; pollTimer = setTimeout(poll, 4000); return; }
   render();
   const last = session.reviews.at(-1);
-  if (last && ['queued', 'running'].includes(last.status)) pollTimer = setTimeout(poll, 2000);
+  const busy = (last && ['queued', 'running'].includes(last.status)) || session.planStatus === 'running' ||
+    Object.values(session.items ?? {}).some((i) => i.status === 'checking');
+  if (busy) pollTimer = setTimeout(poll, 2000);
 }
 
-const CHECK_NAMES = { metrics: 'Video', sfm: 'Camera poses', angles: 'View angles', preflight: 'Check' };
+const CHECK_NAMES = { metrics: 'Video', sfm: 'Camera poses', angles: 'View angles', coverage: 'Planned route', preflight: 'Check' };
+
+const SETTLED = ['passed', 'done', 'waived'];
 
 function render() {
   if (session.stage === 'built') return show('built');
   const last = session.reviews.at(-1);
+  if (!last && session.plan) return renderPrepare();
+  if (!last && session.photos?.length) return renderSurvey();
   if (!last) return show('start');
   show('review');
   const running = ['queued', 'running'].includes(last.status);
@@ -267,6 +290,88 @@ function render() {
   $('build-box').hidden = !(rep?.pass && !running);
   $('build-anyway').hidden = !failed;
 }
+
+function renderSurvey() {
+  show('survey');
+  $('survey-thumbs').innerHTML = '';
+  for (const ph of session.photos ?? []) { const img = new Image(); img.src = ph.url; img.alt = ''; $('survey-thumbs').appendChild(img); }
+  const n = session.photos?.length ?? 0, planning = session.planStatus === 'running';
+  $('make-plan').disabled = n < 4 || planning;
+  $('plan-status').textContent = planning ? 'Looking at your photos and writing the plan… (about a minute)'
+    : session.planStatus === 'failed' ? `Planning failed: ${session.planError}`
+    : n < 4 ? `${n} photo${n === 1 ? '' : 's'} so far; add at least ${4 - n} more (8–15 is best).` : `${n} photos. Add more or make the plan.`;
+}
+
+function renderPrepare() {
+  show('prepare');
+  const plan = session.plan;
+  $('plan-summary').textContent = plan.summary;
+  $('items').innerHTML = '';
+  plan.hazards.forEach((h, k) => {
+    const st = session.items[h.id] ?? { status: 'pending' };
+    const li = document.createElement('li');
+    li.className = `${h.severity}${SETTLED.includes(st.status) ? ' ok' : ''}`;
+    li.innerHTML = '<div class="row"><strong></strong><span class="pill"></span></div><p class="where"></p><p class="fix"></p><p class="reason"></p><div class="actions"></div>';
+    li.querySelector('strong').textContent = h.what;
+    li.querySelector('.pill').className = `pill ${st.status}`;
+    li.querySelector('.pill').textContent = { pending: 'to do', checking: 'checking photo…', failed: 'not yet', passed: 'verified', done: 'done', waived: 'skipped' }[st.status];
+    li.querySelector('.where').textContent = h.where;
+    li.querySelector('.fix').textContent = h.fix;
+    li.querySelector('.reason').textContent = st.reason ?? '';
+    const act = li.querySelector('.actions');
+    if (!SETTLED.includes(st.status) && st.status !== 'checking') {
+      if (h.photo_check) {
+        const id = `verify-${k}`;
+        act.innerHTML = `<label class="button" for="${id}">Take a photo to verify</label><input id="${id}" type="file" accept="image/jpeg,image/png" capture="environment" hidden />`;
+        act.querySelector('input').onchange = (e) => {
+          const f = e.target.files[0];
+          if (f) uploadFile(`/api/sessions/${session.id}/photos?${new URLSearchParams({ kind: 'verify', item: h.id, filename: f.name })}`, f).then(poll, fail);
+        };
+      } else {
+        const b = document.createElement('button');
+        b.textContent = 'Done';
+        b.onclick = () => postJson(`/api/sessions/${session.id}/items/${encodeURIComponent(h.id)}`, { action: 'done' }).then(poll, fail);
+        act.appendChild(b);
+      }
+      const skip = document.createElement('button');
+      skip.textContent = 'Skip';
+      skip.onclick = () => {
+        if (h.severity === 'must' && !confirm('This one can break the build. Skip it anyway?')) return;
+        postJson(`/api/sessions/${session.id}/items/${encodeURIComponent(h.id)}`, { action: 'waive' }).then(poll, fail);
+      };
+      act.appendChild(skip);
+    }
+    $('items').appendChild(li);
+  });
+  $('route').innerHTML = '';
+  for (const st of plan.route) {
+    const li = document.createElement('li');
+    li.textContent = `${st.room}: ${st.title}. ${st.detail}`;
+    $('route').appendChild(li);
+  }
+  $('route-count').textContent = plan.route.length;
+  $('settings').innerHTML = '';
+  for (const t of [...plan.settings, ...plan.notes]) { const li = document.createElement('li'); li.textContent = t; $('settings').appendChild(li); }
+  const left = plan.hazards.filter((h) => !SETTLED.includes(session.items[h.id]?.status)).length;
+  $('prepared-record').disabled = left > 0;
+  $('items-left').textContent = left ? `${left} item${left > 1 ? 's' : ''} left before recording (fix them, or skip them on purpose).` : 'All set. Follow the route steps while you record.';
+}
+
+$('go-survey').onclick = async () => {
+  try { await ensureSession(); session.photos = []; renderSurvey(); } catch (e) { fail(e); }
+};
+$('pick-survey').addEventListener('change', async (e) => {
+  const files = [...e.target.files];
+  e.target.value = '';
+  try {
+    await ensureSession();
+    for (const f of files) await uploadFile(`/api/sessions/${session.id}/photos?${new URLSearchParams({ kind: 'survey', filename: f.name })}`, f);
+    poll();
+  } catch (err) { fail(err); }
+});
+$('make-plan').onclick = () => postJson(`/api/sessions/${session.id}/plan`, {}).then(poll, fail);
+$('prepared-record').onclick = () => { rec.step = 0; openCamera(); };
+fetch('/api/coach').then((r) => r.json()).then(({ available }) => { $('go-survey').hidden = !available; }).catch(() => {});
 
 async function build(force) {
   try {

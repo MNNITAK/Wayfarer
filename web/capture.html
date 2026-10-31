@@ -28,11 +28,45 @@
       </div>
       <div id="plan-box" hidden></div>
       <div class="actions">
+        <button class="primary" id="go-survey" hidden>Plan with photos first (AI)</button>
         <button class="primary" id="go-record">Record with live guide</button>
         <label class="button" for="pick-video">Check a video I already filmed</label>
         <input id="pick-video" type="file" accept="video/*" hidden />
       </div>
       <p class="note">Before you start: lights on, fans off, doors open, mirrors and screens covered, printed marker on a wall in the first room. Use the 1x lens and hold the phone sideways.</p>
+    </section>
+
+    <!-- 1b. survey: photos of the room for the AI plan -->
+    <section id="stage-survey" class="card stage" hidden>
+      <h2>Photos of the space</h2>
+      <p class="note">Take 8–15 photos: one from each corner looking into the room, each doorway, and one of the ceiling.
+        Leave everything as it is now; the coach will tell you what to change.</p>
+      <div id="survey-thumbs" class="thumbs"></div>
+      <div class="actions">
+        <label class="button" for="pick-survey">Add photos</label>
+        <input id="pick-survey" type="file" accept="image/jpeg,image/png" capture="environment" multiple hidden />
+        <button class="primary" id="make-plan" disabled>Make my plan</button>
+      </div>
+      <p id="plan-status" class="note"></p>
+    </section>
+
+    <!-- 1c. prepare: fix what the plan found, verified by photo -->
+    <section id="stage-prepare" class="card stage" hidden>
+      <h2>Get the space ready</h2>
+      <p id="plan-summary" class="note"></p>
+      <ul id="items"></ul>
+      <details>
+        <summary>Your filming route (<span id="route-count"></span> steps)</summary>
+        <ol id="route"></ol>
+      </details>
+      <details>
+        <summary>Phone settings and notes</summary>
+        <ul id="settings"></ul>
+      </details>
+      <div class="actions">
+        <button class="primary" id="prepared-record" disabled>Start recording</button>
+      </div>
+      <p id="items-left" class="note"></p>
     </section>
 
     <!-- 2. record -->
@@ -45,7 +79,12 @@
       </div>
       <div class="card rec-panel">
         <p id="todo" class="todo"></p>
-        <div id="step-card" hidden></div>
+        <div id="step-card" hidden>
+          <small id="step-pos"></small>
+          <strong id="step-title"></strong>
+          <span id="step-detail"></span>
+          <div class="actions"><button id="step-prev">Back</button><button id="step-next">Next step</button></div>
+        </div>
         <ul id="checklist">
           <li data-k="marker"><label><input type="checkbox" id="marker-done" /> Marker filmed from 3 angles</label></li>
           <li data-k="perimeter">Edge of the room, facing in</li>
