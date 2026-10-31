@@ -14,6 +14,11 @@ Capture Coach sessions (a capture is checked and re-filmed until it meets the pi
   GET  /api/sessions/<id>/files/<path>                             -> review thumbnails, photos
   POST /api/sessions/<id>/clips?filename=walk.mp4  body = video   -> runs pipeline/preflight.py on all clips
   POST /api/sessions/<id>/build {"quality", "force"}               -> starts the normal job once a review passed
+  GET  /api/coach                                                  -> whether the AI coach (pipeline/coach.py) can run
+  POST /api/sessions/<id>/photos?kind=survey&filename=a.jpg        -> survey photo of the room
+  POST /api/sessions/<id>/plan                                     -> AI capture plan from the survey photos
+  POST /api/sessions/<id>/photos?kind=verify&item=<id>&filename=   -> photo proving a fix; the coach verifies it
+  POST /api/sessions/<id>/items/<id>  {"action": "done"|"waive"}   -> mark a fix done (no photo check) or skip it
 """
 import json
 import os
@@ -36,6 +41,7 @@ SESSIONS = ROOT / 'work' / 'sessions'
 PORT = int(os.environ.get('WAYFARER_PORT', 8765))
 STEP_RE = re.compile(r'^\[(\d)/5\] (\w+)')
 VIDEO_EXT = {'.mp4', '.mov', '.m4v', '.mkv', '.avi', '.webm'}
+IMAGE_EXT = {'.jpg', '.jpeg', '.png'}
 jobs, uploads = {}, {}  # ponytail: in-memory, one machine, one user; persist to disk if jobs must survive restarts
 lock = threading.Lock()  # one GPU -> one training job (or quick-SfM review) at a time
 sessions = {}
@@ -117,7 +123,70 @@ def load_sessions():
         for rev in s['reviews']:
             if rev['status'] in ('queued', 'running'):  # the server stopped mid-review
                 rev['status'] = 'interrupted'
+        if s.get('planStatus') == 'running':
+            s['planStatus'], s['planError'] = 'failed', 'the server restarted while planning; try again'
+        for item in s.get('items', {}).values():
+            if item['status'] == 'checking':
+                item['status'] = 'pending'
         sessions[s['id']] = s
+
+
+def run_coach(args, out):
+    """pipeline/coach.py in the pipeline environment; returns its JSON (with 'error' on failure)."""
+    p = subprocess.run([sys.executable, str(ROOT / 'pipeline' / 'coach.py'), *map(str, args), '--out', str(out)],
+                       cwd=ROOT, env=pipeline_env(), capture_output=True, text=True, encoding='utf-8', errors='replace')
+    try:
+        return json.loads(Path(out).read_text(encoding='utf-8'))
+    except (FileNotFoundError, ValueError):
+        return {'error': (p.stderr.strip().splitlines() or [f'coach exited with {p.returncode}'])[-1]}
+
+
+def coach_available():
+    p = subprocess.run([sys.executable, '-c', 'import coach, sys; sys.exit(0 if coach.available() else 1)'],
+                       cwd=ROOT / 'pipeline', env=pipeline_env(), capture_output=True)
+    return p.returncode == 0
+
+
+def run_plan(s):
+    s['planStatus'], s['planError'] = 'running', None
+    save_session(s)
+    plan = run_coach(['plan', *[ph['path'] for ph in s['photos']]], session_dir(s) / 'plan.json')
+    if 'error' in plan:
+        s['planStatus'], s['planError'] = 'failed', plan['error']
+    else:
+        s['plan'], s['planStatus'], s['stage'] = plan, 'done', 'prepare'
+        s['items'] = {h['id']: {'status': 'pending', 'reason': None} for h in plan['hazards']}
+    save_session(s)
+
+
+def run_verify(s, item_id, photo):
+    item = s['items'][item_id]
+    item.update(status='checking', reason=None)
+    save_session(s)
+    v = run_coach(['verify', '--plan', session_dir(s) / 'plan.json', '--item', item_id, photo],
+                  photo.with_suffix('.json'))
+    if 'error' in v:
+        item.update(status='pending', reason=v['error'])
+    else:
+        item.update(status='passed' if v['passed'] else 'failed', reason=v['reason'])
+    save_session(s)
+
+
+def coverage_check(s, rev, report):
+    """After the pre-flight passes: did the take cover the AI plan's route? Folds into the report."""
+    cov = run_coach(['review', '--plan', session_dir(s) / 'plan.json', *rev['clips']], Path(rev['work']) / 'coverage.json')
+    if 'error' in cov:
+        report['checks'].append({'name': 'coverage', 'status': 'skipped', 'summary': f"AI coverage review: {cov['error']}"})
+        return
+    missing = cov['missing'] if not cov['ok'] else []
+    report['checks'].append({'name': 'coverage', 'status': 'fail' if missing else 'pass',
+                             'summary': f'{len(missing)} planned step(s) not filmed' if missing else 'every planned step filmed'})
+    for m in missing:
+        report['issues'].append({'kind': 'coverage', 'severity': 'fail', 'clip': None, 't0': None, 't1': None,
+                                 'message': m['what']})
+        report['retakes'].append({'clip': None, 't0': None, 't1': None, 'instruction': m['retake']})
+    if missing:
+        report['pass'] = False
 
 
 def run_review(s, rev):
@@ -140,6 +209,8 @@ def run_review(s, rev):
         report = {'pass': False, 'checks': [{'name': 'preflight', 'status': 'fail',
                                              'summary': f'the check crashed (exit {p.returncode}); see the log'}],
                   'issues': [], 'retakes': []}
+    if report['pass'] and s.get('plan'):
+        coverage_check(s, rev, report)
     rel = Path(rev['work']).relative_to(session_dir(s)).as_posix()
     for i in report['issues']:
         if i.get('thumb'):
@@ -181,6 +252,8 @@ class Handler(BaseHTTPRequestHandler):
                     scenes.append({'id': d.name, 'name': s.get('name', d.name), 'splat': bool(s.get('splat')), 'pois': len(s.get('pois', [])), 'psnr': s.get('stats', {}).get('psnr'),
                                    'updated': f.stat().st_mtime})
             return self.send_json(scenes)
+        if url.path == '/api/coach':
+            return self.send_json({'available': coach_available()})
         if url.path == '/api/lan':
             return self.send_json({'ip': lan_ip(), 'phonePort': int(os.environ.get('WAYFARER_PHONE_PORT', 5174))})
         if url.path.startswith('/api/jobs/'):
@@ -237,6 +310,20 @@ class Handler(BaseHTTPRequestHandler):
                 return self.add_clip(s, url)
             if parts[1:] == ['build']:
                 return self.build_session(s)
+            if parts[1:] == ['photos']:
+                return self.add_photo(s, url)
+            if parts[1:] == ['plan']:
+                if not s['photos']:
+                    return self.reject('add survey photos first')
+                threading.Thread(target=run_plan, args=(s,), daemon=True).start()
+                return self.send_json({'planning': True}, 201)
+            if len(parts) == 3 and parts[1] == 'items' and parts[2] in s.get('items', {}):
+                q = self.read_json() or {}
+                if q.get('action') not in ('done', 'waive'):
+                    return self.send_json({'error': 'action must be done or waive'}, 400)
+                s['items'][parts[2]].update(status='done' if q['action'] == 'done' else 'waived')
+                save_session(s)
+                return self.send_json(s['items'][parts[2]], 201)
         self.reject('not found', 404)
 
     def read_json(self):
@@ -251,10 +338,33 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({'error': 'body must be JSON'}, 400)
         sid = uuid.uuid4().hex[:8]
         s = {'id': sid, 'title': (q.get('title') or '').strip()[:40], 'ceiling': q.get('ceiling') or None,
-             'created': time.time(), 'stage': 'record', 'clips': [], 'reviews': [], 'retakeFrom': None, 'job': None}
+             'created': time.time(), 'stage': 'record', 'clips': [], 'reviews': [], 'retakeFrom': None, 'job': None,
+             'photos': [], 'plan': None, 'planStatus': None, 'planError': None, 'items': {}}
         sessions[sid] = s
         save_session(s)
         self.send_json({'id': sid}, 201)
+
+    def add_photo(self, s, url):
+        q = parse_qs(url.query)
+        kind, item = q.get('kind', ['survey'])[0], q.get('item', [None])[0]
+        ext = Path(q.get('filename', ['photo.jpg'])[0]).suffix.lower()
+        if ext not in IMAGE_EXT:
+            return self.reject(f'photos must be JPEG or PNG, not {ext or "(none)"}')
+        if kind == 'verify' and item not in s.get('items', {}):
+            return self.reject('no such item in the plan')
+        n = len(list((session_dir(s) / 'photos').glob('*'))) if (session_dir(s) / 'photos').exists() else 0
+        path = session_dir(s) / 'photos' / (f'{n:03d}_survey{ext}' if kind == 'survey' else f'{n:03d}_{slug(item)}{ext}')
+        if not self.save_body(path):
+            return self.send_json({'error': 'upload interrupted'}, 400)
+        url_ = f"/api/sessions/{s['id']}/files/photos/{path.name}"
+        if kind == 'survey':
+            s['photos'].append({'path': str(path), 'url': url_})
+            s['stage'] = 'survey'
+            save_session(s)
+        else:
+            s['items'][item]['photo'] = url_
+            threading.Thread(target=run_verify, args=(s, item, path), daemon=True).start()
+        self.send_json({'url': url_}, 201)
 
     def add_clip(self, s, url):
         """A recorded take or a retake; every clip so far is reviewed together (they merge into one space)."""
