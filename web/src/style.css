@@ -88,7 +88,7 @@ input:focus, select:focus, button:focus-visible { outline: 2px solid var(--cyan)
 .poi-label .name {
   background: var(--panel); padding: 2px 8px; border-radius: 6px; opacity: 0; transition: opacity 0.15s;
 }
-.poi-label:hover .name, .poi-label.show .name { opacity: 1; }
+.poi-label:hover .name, .poi-label.show .name, .poi-label.near .name { opacity: 1; }
 
 #poi-card, #tag-form {
   position: fixed; left: 12px; bottom: 12px; width: 340px; background: var(--panel); border: 1px solid var(--line);

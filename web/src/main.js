@@ -196,6 +196,17 @@ function openCard(p) {
   poiObjects.forEach((o, id) => o.element.classList.toggle('show', id === p.id));
 }
 
+// Line of sight on the floor plan: does the straight line between two points cross a wall cell ('#')?
+// The last 30 cm are ignored, since wall-mounted things (a TV) sit in a wall cell themselves.
+function inSight(x0, z0, x1, z1) {
+  const len = Math.hypot(x1 - x0, z1 - z0), n = Math.ceil(len / (grid.cell / 2));
+  for (let i = 1; i < n && (n - i) * grid.cell / 2 > 0.3; i++) {
+    const [cx, cz] = toCell(grid, x0 + (x1 - x0) * i / n, z0 + (z1 - z0) * i / n);
+    if (data.rows[cz]?.[cx] === '#') return false;
+  }
+  return true;
+}
+
 // Where is the crosshair pointing? March the view ray over the occupancy grid until floor or obstacle.
 function crosshairTarget() {
   const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
@@ -552,6 +563,10 @@ function frame() {
     const o = poiObjects.get(p.id);
     toP.subVectors(o.position, camera.position);
     const d = toP.length(), ang = fwd.angleTo(toP);
+    // pins behind a wall are hidden; room names always show, item names once you are close
+    const seen = p === selected || p === route?.target || inSight(camera.position.x, camera.position.z, p.x, p.z);
+    o.element.style.visibility = seen ? '' : 'hidden';
+    o.element.classList.toggle('near', seen && (p.category === 'room' || d < 4));
     if (d < 20 && ang < bestAng) { best = { p, d }; bestAng = ang; }
   }
   $('look-label').hidden = !best || !player.locked;
