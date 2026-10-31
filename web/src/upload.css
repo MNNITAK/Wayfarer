@@ -9,6 +9,9 @@ body.studio { overflow: auto; }
 .card[hidden], .banner[hidden] { display: none; }
 .banner { border: 1px solid #e66; background: #3a1820; padding: 12px 14px; border-radius: 10px; }
 .banner code { color: var(--accent); }
+.tip { font-size: 0.9em; color: var(--muted); }
+.tip strong { color: var(--text); }
+.tip code { color: var(--accent); word-break: break-all; }
 
 #new-job { display: grid; gap: 14px; }
 #drop {

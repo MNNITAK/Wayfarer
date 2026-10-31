@@ -112,4 +112,7 @@ async function loadScenes() {
 }
 
 loadScenes();
+fetch('/api/lan').then((r) => r.json()).then(({ ip, phonePort }) => {
+  if (ip) $('phone-url').textContent = `https://${ip}:${phonePort}/capture.html`;
+}).catch(() => { /* server down: the banner says so */ });
 try { const id = localStorage.getItem('wayfarer:job'); if (id) follow(id); } catch { /* storage blocked */ }
