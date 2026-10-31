@@ -5,8 +5,11 @@ and check that a finished take covered the plan. Their brief is pipeline/capture
   python pipeline/coach.py verify --plan plan.json --item fan photo.jpg --out verdict.json
   python pipeline/coach.py review --plan plan.json take1.mp4 [take2.mp4 ...] --out coverage.json
 
-Needs the `anthropic` package and an API key (ANTHROPIC_API_KEY, or an `ant auth login` profile).
-WAYFARER_COACH_MODEL overrides the model.
+Runs on a local Ollama vision model by default (free, photos stay on this PC):
+  install Ollama (ollama.com), then `ollama pull qwen2.5vl:7b`
+  WAYFARER_OLLAMA_MODEL picks another vision model, OLLAMA_HOST another server.
+WAYFARER_COACH_PROVIDER=claude uses the Claude API instead (`anthropic` package + ANTHROPIC_API_KEY);
+WAYFARER_COACH_MODEL then overrides the Claude model.
 """
 import argparse
 import base64
@@ -17,12 +20,32 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+PROVIDER = os.environ.get('WAYFARER_COACH_PROVIDER', 'ollama')
 MODEL = os.environ.get('WAYFARER_COACH_MODEL', 'claude-opus-5-5')
-IMAGE_SIDE = 1024        # px; enough to spot a fan or a mirror, small enough to keep requests cheap
-REVIEW_FRAMES = 24
+OLLAMA_URL = os.environ.get('OLLAMA_HOST', 'http://127.0.0.1:11434')
+OLLAMA_MODEL = os.environ.get('WAYFARER_OLLAMA_MODEL', 'qwen2.5vl:7b')
+OLLAMA_CTX = 16384       # tokens; Ollama's small default would silently drop most of the images
+
+
+def local():
+    return PROVIDER == 'ollama'
+
+
+# a local 7B model on an 8 GB laptop GPU gets smaller and fewer images than the API
+def image_side():
+    return 640 if local() else 1024   # px; enough to spot a fan or a mirror
+
+
+def review_frames():
+    return 12 if local() else 24
+
+
+MAX_PLAN_PHOTOS = 12     # local model: more photos would not fit its context
 
 
 class CoachError(RuntimeError):
@@ -83,7 +106,7 @@ def image_block(path):
     """A downscaled JPEG of the photo/frame as a base64 image content block."""
     from PIL import Image, ImageOps
     im = ImageOps.exif_transpose(Image.open(path)).convert('RGB')
-    im.thumbnail((IMAGE_SIDE, IMAGE_SIDE))
+    im.thumbnail((image_side(), image_side()))
     buf = io.BytesIO()
     im.save(buf, 'JPEG', quality=85)
     return {'type': 'image', 'source': {'type': 'base64', 'media_type': 'image/jpeg',
@@ -91,7 +114,44 @@ def image_block(path):
 
 
 def ask(content, schema, effort='medium', client=None):
-    """One structured request with the requirements as the system prompt; returns the parsed JSON."""
+    """One structured request with the requirements as the system prompt; returns the parsed JSON.
+    content: Claude-style text/image blocks, converted for Ollama when that is the provider."""
+    return ask_ollama(content, schema) if local() else ask_claude(content, schema, effort, client)
+
+
+def ask_ollama(content, schema):
+    """Ollama /api/chat with the JSON schema as `format` (constrained decoding) and the images in order."""
+    text, images = [], []
+    for b in content:
+        if b['type'] == 'image':
+            images.append(b['source']['data'])
+            text.append(f'[image {len(images)}]')
+        else:
+            text.append(b['text'])
+    body = {'model': OLLAMA_MODEL, 'stream': False, 'format': schema,
+            'options': {'temperature': 0, 'num_ctx': OLLAMA_CTX},
+            'messages': [{'role': 'system', 'content': requirements()},
+                         {'role': 'user', 'content': '\n'.join(text) + '\n\nAnswer only with JSON matching the schema.',
+                          'images': images}]}
+    req = urllib.request.Request(f'{OLLAMA_URL}/api/chat', data=json.dumps(body).encode(),
+                                 headers={'Content-Type': 'application/json'})
+    try:
+        with urllib.request.urlopen(req, timeout=900) as r:  # a local model can take minutes on many images
+            reply = json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode(errors='replace')
+        if e.code == 404:
+            raise CoachError(f'the vision model is not downloaded: run `ollama pull {OLLAMA_MODEL}`')
+        raise CoachError(f'Ollama error ({e.code}): {detail[:200]}')
+    except (urllib.error.URLError, TimeoutError, ConnectionError):
+        raise CoachError(f'Ollama is not running at {OLLAMA_URL}: install it from ollama.com and start it')
+    try:
+        return json.loads(reply['message']['content'])
+    except (KeyError, ValueError):
+        raise CoachError('the local model did not return valid JSON; try again or use a larger model')
+
+
+def ask_claude(content, schema, effort='medium', client=None):
     import anthropic
     if client is None and not available():
         raise CoachError('no Anthropic API key: set ANTHROPIC_API_KEY or run `ant auth login`, then try again')
@@ -133,6 +193,8 @@ def labelled(images):
 
 
 def plan(photos, client=None):
+    if local() and len(photos) > MAX_PLAN_PHOTOS:  # keep an even spread
+        photos = [photos[round(k * (len(photos) - 1) / (MAX_PLAN_PHOTOS - 1))] for k in range(MAX_PLAN_PHOTOS)]
     content = labelled([(f'Photo {i + 1}: {Path(p).name}', p) for i, p in enumerate(photos)])
     p = ask(content + [{'type': 'text', 'text': PLAN_TASK}], PLAN_SCHEMA, effort='high', client=client)
     p['hazards'].append({'id': 'marker', 'what': 'Printed scale marker', 'where': p['marker']['where'],
@@ -153,7 +215,7 @@ def verify_item(capture_plan, item_id, photo, client=None):
     return ask([image_block(photo), {'type': 'text', 'text': task}], VERDICT_SCHEMA, client=client)
 
 
-def sample_frames(clips, out, n=REVIEW_FRAMES):
+def sample_frames(clips, out, n=None):
     """About n frames spread over all clips: [(label, path)]."""
     raw = []
     for i, clip in enumerate(clips):
@@ -163,6 +225,7 @@ def sample_frames(clips, out, n=REVIEW_FRAMES):
                         'fps=1,scale=640:-2', '-q:v', '4', str(d / '%05d.jpg')], check=True)
         raw += [(f'take {i + 1} at {int(t) // 60}:{int(t) % 60:02d}', f)
                 for t, f in enumerate(sorted(d.glob('*.jpg')))]
+    n = n or review_frames()
     step = max(1, len(raw) / n)
     return [raw[int(k * step)] for k in range(min(n, len(raw)))]
 
@@ -180,7 +243,14 @@ def review_coverage(capture_plan, clips, client=None):
 
 
 def available():
-    """Whether the coach can run: the SDK is installed and some credential is configured."""
+    """Whether the coach can run: Ollama is up with the model pulled, or (Claude) the SDK and a credential exist."""
+    if local():
+        try:
+            with urllib.request.urlopen(f'{OLLAMA_URL}/api/tags', timeout=3) as r:
+                names = {m['name'] for m in json.loads(r.read()).get('models', [])}
+        except (urllib.error.URLError, OSError, ValueError):
+            return False
+        return OLLAMA_MODEL in names or f'{OLLAMA_MODEL}:latest' in names
     try:
         import anthropic  # noqa: F401
     except ImportError:
