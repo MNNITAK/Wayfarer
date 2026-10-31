@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Wayfarer Capture Coach</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cpath d=%22M16 2a10 10 0 0 0-10 10c0 7.5 10 18 10 18s10-10.5 10-18A10 10 0 0 0 16 2z%22 fill=%22%23ff8a3d%22/%3E%3Ccircle cx=%2216%22 cy=%2212%22 r=%224%22 fill=%22%230e1a2b%22/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/src/style.css" />
+  <link rel="stylesheet" href="/src/upload.css" />
+  <link rel="stylesheet" href="/src/capture.css" />
+</head>
+<body class="studio coach">
+  <main>
+    <header>
+      <h1>Wayfarer <span>Capture Coach</span></h1>
+      <p>Guides you while you film and checks the video before the long build, until it is good enough for a sharp twin.</p>
+    </header>
+
+    <div id="server-down" class="banner" hidden>
+      The job server isn't reachable. Start everything with <code>start.bat</code> on the PC, and open this page from the address it prints.
+    </div>
+
+    <!-- 1. start -->
+    <section id="stage-start" class="card stage">
+      <div class="fields">
+        <label>Name <input id="title" placeholder="My Home" maxlength="40" /></label>
+        <label>Ceiling height (m) <input id="ceiling" type="number" step="0.01" min="1.8" max="12" placeholder="2.75" /></label>
+      </div>
+      <div id="plan-box" hidden></div>
+      <div class="actions">
+        <button class="primary" id="go-record">Record with live guide</button>
+        <label class="button" for="pick-video">Check a video I already filmed</label>
+        <input id="pick-video" type="file" accept="video/*" hidden />
+      </div>
+      <p class="note">Before you start: lights on, fans off, doors open, mirrors and screens covered, printed marker on a wall in the first room. Use the 1x lens and hold the phone sideways.</p>
+    </section>
+
+    <!-- 2. record -->
+    <section id="stage-record" class="stage" hidden>
+      <div id="viewfinder">
+        <video id="preview" playsinline muted></video>
+        <div id="hint" class="hint" hidden></div>
+        <div id="rec-top"><span id="rec-dot"></span><span id="rec-time">0:00</span><span id="sensor-note" hidden>no motion sensors: turn and coverage checks are off</span></div>
+        <svg id="ring" viewBox="-50 -50 100 100" aria-label="Directions filmed in this room"></svg>
+      </div>
+      <div class="card rec-panel">
+        <p id="todo" class="todo"></p>
+        <div id="step-card" hidden></div>
+        <ul id="checklist">
+          <li data-k="marker"><label><input type="checkbox" id="marker-done" /> Marker filmed from 3 angles</label></li>
+          <li data-k="perimeter">Edge of the room, facing in</li>
+          <li data-k="alongWalls">Along each wall, camera angled at it</li>
+          <li data-k="ceiling">Ceiling sweep</li>
+          <li data-k="backAtStart">Back where the room started</li>
+        </ul>
+        <div class="actions">
+          <button class="primary" id="rec-toggle">Start recording</button>
+          <button id="next-room" disabled>Next room</button>
+          <button id="rec-cancel">Cancel</button>
+        </div>
+        <div id="rec-upload" class="bar" hidden><div></div></div>
+      </div>
+    </section>
+
+    <!-- 3. review -->
+    <section id="stage-review" class="card stage" hidden>
+      <div class="job-head">
+        <h2>Checking your capture</h2>
+        <span id="review-status" class="pill"></span>
+      </div>
+      <ul id="checks"></ul>
+      <pre id="review-log" aria-live="polite"></pre>
+      <div id="retakes"></div>
+      <ul id="issues"></ul>
+      <div class="actions">
+        <button class="primary" id="retake-record" hidden>Record the retake</button>
+        <label class="button" for="pick-retake" id="retake-upload" hidden>Upload a retake video</label>
+        <input id="pick-retake" type="file" accept="video/*" hidden />
+      </div>
+      <div id="build-box" hidden>
+        <label>Quality
+          <select id="quality">
+            <option value="fast">Preview (~10 min)</option>
+            <option value="default" selected>Full (~40 min)</option>
+            <option value="high">High (~60 min, 1600 px)</option>
+            <option value="max">Max (~90 min)</option>
+          </select>
+        </label>
+        <button class="primary" id="build">Build twin</button>
+      </div>
+      <p class="note"><a href="#" id="build-anyway" hidden>Build anyway without passing (not recommended)</a> · <a href="#" id="start-over">Start a new capture</a></p>
+    </section>
+
+    <!-- 4. built -->
+    <section id="stage-built" class="card stage" hidden>
+      <h2>Building your twin</h2>
+      <p>The capture passed its checks and the build has started. Follow it in the Studio.</p>
+      <a class="button primary" href="./upload.html">Open Studio →</a>
+      <p class="note"><a href="#" id="start-over-2">Start a new capture</a></p>
+    </section>
+  </main>
+  <script type="module" src="/src/capture.js"></script>
+</body>
+</html>
