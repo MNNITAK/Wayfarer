@@ -118,6 +118,7 @@ def run_review(s, rev):
         cmd = [sys.executable, str(ROOT / 'pipeline' / 'preflight.py'), *rev['clips'], '--work', rev['work']]
         if s.get('retakeFrom') is not None:
             cmd += ['--retake-from', str(s['retakeFrom'])]
+        cmd += ['--names', *[f"take {k + 1}" for k in range(len(rev['clips']))]]
         with open(rev['log'], 'w', encoding='utf-8', errors='replace') as log:
             p = subprocess.run(cmd, cwd=ROOT, env=pipeline_env(), stdout=log, stderr=subprocess.STDOUT)
     report_file = Path(rev['work']) / 'report.json'
