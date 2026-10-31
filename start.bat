@@ -18,5 +18,7 @@ if not exist "web\node_modules" (
 
 start "Wayfarer job server" cmd /k ".venv-ns\Scripts\python.exe pipeline\server.py"
 start "Wayfarer web" cmd /k "cd web && npm run dev -- --host 127.0.0.1 --port 5173"
+rem HTTPS on the Wi-Fi for the Capture Coach on a phone (camera and motion sensors need a secure page)
+start "Wayfarer phone" cmd /k "cd web && npm run phone"
 timeout /t 4 >nul
 start "" "http://127.0.0.1:5173/upload.html"
