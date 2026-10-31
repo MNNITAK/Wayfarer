@@ -93,8 +93,10 @@ def image_block(path):
 def ask(content, schema, effort='medium', client=None):
     """One structured request with the requirements as the system prompt; returns the parsed JSON."""
     import anthropic
-    client = client or anthropic.Anthropic()
+    if client is None and not available():
+        raise CoachError('no Anthropic API key: set ANTHROPIC_API_KEY or run `ant auth login`, then try again')
     try:
+        client = client or anthropic.Anthropic()
         r = client.beta.messages.create(
             model=MODEL, max_tokens=16000,
             system=requirements(),
@@ -110,6 +112,8 @@ def ask(content, schema, effort='medium', client=None):
         raise CoachError(f'the AI coach request failed ({e.status_code}): {e.message}')
     except anthropic.APIConnectionError:
         raise CoachError('cannot reach the Anthropic API; check the internet connection')
+    except anthropic.AnthropicError as e:  # e.g. no credentials configured at all
+        raise CoachError(f'the AI coach is not set up: {e}')
     if r.stop_reason == 'refusal':
         raise CoachError('the AI coach declined these images')
     if r.stop_reason == 'max_tokens':
