@@ -66,15 +66,20 @@ camera and motion sensors on secure pages. The Studio shows the exact address (`
 - Browser recording cannot lock exposure on every phone. If the review reports exposure jumps, film with the phone's
   camera app (AE/AF lock on) and use *Check a video I already filmed* instead.
 
-AI survey, verification and coverage review (optional):
+AI survey, verification and coverage review (optional, free, runs locally):
 
-```bash
-uv pip install --python .venv-ns/Scripts/python.exe anthropic
-setx ANTHROPIC_API_KEY "sk-ant-..."     # then restart start.bat
-```
+1. Install [Ollama](https://ollama.com/download) and start it.
+2. Download the vision model once (about 6 GB): `ollama pull qwen2.5vl:7b`
+3. Restart `start.bat`. *Plan with photos first* appears on the Coach page when Ollama and the model are found.
 
-`WAYFARER_COACH_MODEL` picks another Claude model (default `claude-opus-5-5`). Each plan or review sends about 10–25
-images.
+A plan takes about one to a few minutes on an 8 GB laptop GPU. Do it before a build, not while one is training: they
+share the GPU. `WAYFARER_OLLAMA_MODEL` picks another vision model (e.g. `gemma3:12b` on a bigger GPU) and
+`OLLAMA_HOST` another Ollama server. A 7B local model misses more than a large hosted one, so read the plan with a
+critical eye; the photo checks and the automatic review still catch most problems.
+
+To use the Claude API instead: `uv pip install --python .venv-ns/Scripts/python.exe anthropic`, then
+`setx WAYFARER_COACH_PROVIDER claude` and `setx ANTHROPIC_API_KEY "sk-ant-..."` (`WAYFARER_COACH_MODEL` picks the model,
+default `claude-opus-5-5`).
 
 ## Troubleshooting
 

@@ -64,7 +64,7 @@ Recording a perfect video is hard, and a bad take used to show up only after the
 (`capture.html`, open it on your phone at the `https://<PC IP>:5174/capture.html` address the Studio shows) keeps
 checking until the capture meets what the pipeline needs ([`pipeline/capture_requirements.md`](pipeline/capture_requirements.md)):
 
-1. **Survey (optional, AI):** take 8–15 photos of the space. A Claude agent writes a plan for *this* room: what to fix
+1. **Survey (optional, AI):** take 8–15 photos of the space. A vision model writes a plan for *this* room: what to fix
    (fan off, mirror covered, TV off…), where the marker goes, and a filming route naming real landmarks.
 2. **Prepare:** fix each item and photograph it; the agent verifies the photo. Recording unlocks when every item is
    verified or deliberately skipped.
@@ -76,7 +76,8 @@ checking until the capture meets what the pipeline needs ([`pipeline/capture_req
    Failures come back as short **retake** clips to film, not a full re-shoot. Once it passes, *Build twin* starts the
    normal pipeline.
 
-The AI steps need `pip install anthropic` in the pipeline venv and an API key (`ANTHROPIC_API_KEY`); without them the
+The AI steps run on a free local vision model through [Ollama](https://ollama.com) (`ollama pull qwen2.5vl:7b`), so
+photos never leave the PC; `WAYFARER_COACH_PROVIDER=claude` switches to the Claude API instead. Without either, the
 coach still runs steps 3 and 4. Check a finished video from the command line with
 `python pipeline/preflight.py walk.mp4 --work work/check`.
 
@@ -96,7 +97,7 @@ pipeline/
   train_mcmc.py     gsplat MCMC trainer (memory-capped fallback: --trainer mcmc)
   server.py         local job server behind the upload studio and the Capture Coach (stdlib only)
   preflight.py      fast capture check: blur/turn/light, quick COLMAP gate, view-angle coverage, retakes
-  coach.py          Capture Coach agents (Claude): room plan from photos, photo-verified fixes, route coverage
+  coach.py          Capture Coach agents (local Ollama vision model, or Claude): room plan, verified fixes, coverage
   capture_requirements.md  what the pipeline needs from a capture; the coach's brief and the checks' numbers
   test_navgrid.py   synthetic-room self-check (python pipeline/test_navgrid.py)
   test_marker_scale.py  rendered-marker self-check
@@ -136,7 +137,7 @@ The grid is plain text on purpose: you can fix a wall the scan missed in any tex
 cd web && npm test                  # pathfinding, collision, instructions
 python pipeline/test_navgrid.py     # floor/scale/wall recovery on a synthetic splat
 python pipeline/test_preflight.py   # capture check: blur/turn/dark/blank stretches, view angles, retakes
-python pipeline/test_coach.py       # coach agents with the Claude API stubbed
+python pipeline/test_coach.py       # coach agents with Ollama and the Claude API stubbed
 .venv-ns/Scripts/python pipeline/test_marker_scale.py   # ArUco scale recovery on rendered views
 ```
 

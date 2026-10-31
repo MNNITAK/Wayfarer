@@ -1,5 +1,5 @@
 # Wayfarer pipeline glue (navgrid + frame selection). Training deps: see docs/SETUP.md (nerfstudio + COLMAP).
 numpy>=1.24
 pillow>=10
-# Capture Coach AI survey/verify/review (optional: the coach works without it, minus personalisation)
-anthropic>=0.125
+# Capture Coach AI steps use a local Ollama model over HTTP (no package needed). Only for WAYFARER_COACH_PROVIDER=claude:
+# anthropic>=0.125
