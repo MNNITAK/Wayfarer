@@ -72,6 +72,7 @@ async function boot() {
   player = new Player(camera, renderer.domElement, grid, { eyeHeight: data.eyeHeight ?? 1.6, floorY });
   const sp = data.spawn ?? { x: grid.ox + grid.w * grid.cell / 2, z: grid.oz + grid.h * grid.cell / 2, yaw: 0 };
   player.teleport(sp.x, sp.z, sp.yaw);
+  if (import.meta.env.DEV) window.wayfarer = { player, camera, data }; // lets scripted checks place the camera
   player.onLockChange = (locked) => {
     if (!locked) return;
     $('overlay').hidden = true;
