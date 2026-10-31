@@ -345,6 +345,28 @@ def point_normals(P, k=12):
     return N
 
 
+def adaptive(P, N, rgb, fine, coarse, max_std=0.035):
+    """Detail-adaptive density: in each `coarse` cube whose points are plain (colour std < max_std) and flat (normals
+    agree), replace the fine points by one big splat. Walls, ceilings and floors shrink ~10x; objects, edges and
+    printed detail keep every fine point. Returns (fine vertices, coarse vertices) as splat arrays."""
+    key = np.floor((P - P.min(0)) / coarse).astype(np.int64)
+    _, inv, cnt = np.unique(key, axis=0, return_inverse=True, return_counts=True)
+    inv = inv.ravel()
+    mean = lambda a: np.stack([np.bincount(inv, weights=a[:, k], minlength=len(cnt)) for k in range(a.shape[1])], 1) / cnt[:, None]
+    c_mean = mean(rgb)
+    c_std = np.sqrt(np.maximum(mean(rgb ** 2) - c_mean ** 2, 0)).max(1)
+    # normals are unsigned: align each to its cube's first normal before averaging
+    first = np.zeros_like(N[:len(cnt)])
+    first[inv[::-1]] = N[::-1]
+    Na = N * np.sign((N * first[inv]).sum(1, keepdims=True) + 1e-9)
+    n_mean = mean(Na)
+    flat = np.linalg.norm(n_mean, axis=1) > 0.95
+    merge = (cnt >= 4) & flat & (c_std < max_std)
+    keep = ~merge[inv]
+    big = splats(mean(P)[merge], n_mean[merge], c_mean[merge], coarse, spread=0.75)
+    return splats(P[keep], N[keep], rgb[keep], fine, spread=1.1), big
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--mesh', type=Path, required=True)
@@ -355,6 +377,7 @@ def main():
     ap.add_argument('--intrinsics', default='525,525,319.5,239.5', help='fx,fy,cx,cy (default: PrimeSense)')
     ap.add_argument('--voxel', type=float, default=0.012, help='splat spacing in metres')
     ap.add_argument('--lidar', type=Path, help='coloured LIDAR point cloud of the same space: replaces the mesh geometry')
+    ap.add_argument('--adaptive', type=float, help='LIDAR: merge plain flat areas into splats of this size (e.g. 0.02)')
     ap.add_argument('--step', type=int, default=15, help='use every Nth frame for colour')
     ap.add_argument('--work', type=Path, default=Path(__file__).resolve().parent.parent / 'work')
     a = ap.parse_args()
@@ -399,7 +422,12 @@ def main():
             print(f'[4/5] normals for {len(P):,} points')
             N = point_normals(P)
         del L, Lrgb, Ln
-        v = splats(P, N, rgb, a.voxel, spread=1.1)  # scan points are unevenly spaced: overlap more, no see-through specks
+        if a.adaptive:
+            v_fine, v_big = adaptive(P, N, rgb, a.voxel, a.adaptive)
+            v = np.concatenate([v_fine, v_big])
+            print(f'  adaptive: {len(v_fine):,} detailed + {len(v_big):,} merged splats (from {len(P):,} points)')
+        else:  # scan points are unevenly spaced: overlap more, no see-through specks
+            v = splats(P, N, rgb, a.voxel, spread=1.1)
     else:
         print(f'[3/5] surface points every {a.voxel * 100:.1f} cm + normals')
         N = vertex_normals(V, tri)
