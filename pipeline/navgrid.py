@@ -539,16 +539,23 @@ def main():
     scene = build(v, cams, up=[float(x) for x in a.up.split(',')], scale=a.scale, marker=marker, ceiling=a.ceiling,
                   camera_height=a.camera_height, cell=a.cell, carver=carver)
 
+    export_scene(v, scene, out, a.name or out.name, a.splat, crop=not a.no_crop)
+
+
+def export_scene(v, scene, out, name, ply, crop=True):
+    """Write the twin: cropped splats (SOG when splat-transform is available), scene.json and grid.png.
+    v: the splat vertex array, ply: its file on disk, scene: build()'s result."""
+    out = Path(out)
     for stale in ('scene.sog', 'scene.splat', 'scene.ply'):
         (out / stale).unlink(missing_ok=True)
-    if not a.no_crop:  # drop junk outside the house (seen through windows/mirrors): cleaner view, smaller file
+    if crop:  # drop junk outside the house (seen through windows/mirrors): cleaner view, smaller file
         keep = crop_mask(v, scene)
         if keep.mean() < 0.995:
             print(f'  cropped {np.count_nonzero(~keep):,} splats outside the mapped space ({1 - keep.mean():.0%})')
             v = v[keep]
-            a.splat = str(out / '_cropped.ply')
-            write_ply(v, a.splat)
-    if 'f_dc_0' in v.dtype.names and to_sog(a.splat, out / 'scene.sog'):
+            ply = str(out / '_cropped.ply')
+            write_ply(v, ply)
+    if 'f_dc_0' in v.dtype.names and to_sog(ply, out / 'scene.sog'):
         url = 'scene.sog'
         print(f'  wrote scene.sog ({(out / url).stat().st_size / 1e6:.1f} MB, full SH)')
     elif 'f_dc_0' in v.dtype.names:  # node/splat-transform unavailable: our own 32 B/splat packing
@@ -556,14 +563,14 @@ def main():
         url = 'scene.splat'
         print(f'  wrote scene.splat ({n:,} splats, {(out / url).stat().st_size / 1e6:.1f} MB)')
     else:
-        shutil.copy(a.splat, out / 'scene.ply')
+        shutil.copy(ply, out / 'scene.ply')
         url = 'scene.ply'
 
     (out / '_cropped.ply').unlink(missing_ok=True)
     old = out / 'scene.json'
     pois = json.loads(old.read_text()).get('pois', []) if old.exists() else []  # re-runs keep tagged POIs
     tr = scene.pop('transform')
-    scene = {'name': a.name or out.name, **scene, 'splat': {'url': url, 'count': int(len(v)), **tr}, 'pois': pois}
+    scene = {'name': name, **scene, 'splat': {'url': url, 'count': int(len(v)), **tr}, 'pois': pois}
     old.write_text(json.dumps(scene, indent=1))
     save_preview(scene['rows'], out / 'grid.png')
     print(f'done -> {out / "scene.json"}')
