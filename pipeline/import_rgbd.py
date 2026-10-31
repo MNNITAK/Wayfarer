@@ -172,6 +172,68 @@ def splats(P, N, rgb, size):
     return out
 
 
+def fill_above(P, N, rgb, scene, size=0.03, ceiling=None):
+    """Splats the scan never captured: walls continued up to the ceiling, a ceiling and a backing floor.
+
+    A hand-held scan at chest height rarely sees above ~2 m. Each wall column (vertical surface reaching above 1.1 m,
+    higher than tables, beds and sofa backs)
+    is extended from its highest point to the ceiling in the colour of its top 30 cm; the ceiling is a flat plane in
+    the median wall-top colour. Returns (P, N, rgb) in the scan's frame, the ceiling height, and the wall and ceiling + floor counts.
+    """
+    from scipy import ndimage
+    from scipy.spatial.transform import Rotation
+    tr = scene['transform']
+    R, sc, t = Rotation.from_quat(tr['rotation']).as_matrix(), tr['scale'][0], np.array(tr['position'])
+    m, n = sc * P @ R.T + t, N @ R.T  # scene frame: y up, floor at 0, metres
+    y = m[:, 1]
+    if ceiling is None:  # the highest surfaces the scan did reach are usually the ceiling's edge
+        ceiling = float(np.clip(np.quantile(y, 0.998), 2.3, 3.2))
+
+    wall = (y > 1.1) & (y < ceiling - size) & (np.abs(n[:, 1]) < 0.3)
+    cell = np.floor(m[wall][:, [0, 2]] / size).astype(np.int64)
+    # only wall-like runs: a thin pole (floor lamp, door stop) has few neighbouring columns, a wall has a line of them
+    occ = np.zeros(tuple(cell.max(0) - cell.min(0) + 1), bool)
+    occ[tuple((cell - cell.min(0)).T)] = True
+    nb = ndimage.uniform_filter(occ.astype(np.float32), size=7, mode='constant') * 49
+    wide = nb[tuple((cell - cell.min(0)).T)] > 6.5
+    wall[np.flatnonzero(wall)[~wide]] = False
+    cell = cell[wide]
+    _, col = np.unique(cell, axis=0, return_inverse=True)
+    col = col.ravel()
+    top = np.full(col.max() + 1, -np.inf)
+    np.maximum.at(top, col, y[wall])
+    near = y[wall] > top[col] - 0.3
+    cnt = np.bincount(col[near], minlength=len(top))[:, None]
+    mean = lambda a: np.stack([np.bincount(col[near], weights=a[near, k], minlength=len(top)) for k in range(a.shape[1])], 1) / cnt
+    xz, cn, cc = mean(m[wall][:, [0, 2]]), mean(n[wall]), mean(rgb[wall])
+    steps = np.maximum(0, np.floor((ceiling - top) / size)).astype(int)
+    rep = np.repeat(np.arange(len(top)), steps)
+    k = np.arange(len(rep)) - np.repeat(np.cumsum(steps) - steps, steps)
+    wp = np.c_[xz[rep, 0], top[rep] + (k + 1) * size, xz[rep, 1]]
+    wn, wc = cn[rep], cc[rep]
+
+    rows, cs = scene['rows'], scene['cellSize']
+    known = np.array([[c != ' ' for c in r] for r in rows])
+    known = ndimage.binary_fill_holes(ndimage.binary_closing(known, iterations=3))  # no gaps in the ceiling
+    iz, ix = np.nonzero(known)
+    g = np.arange(0, cs, size) + size / 2
+    gx, gz = np.meshgrid(g, g)
+    cx = (scene['origin'][0] + ix[:, None] * cs + gx.ravel()).ravel()
+    cz = (scene['origin'][1] + iz[:, None] * cs + gz.ravel()).ravel()
+    cp = np.c_[cx, np.full(len(cx), ceiling), cz]
+    shade = np.median(cc, 0) if len(cc) else np.array([0.85, 0.85, 0.85])
+    # floor under furniture and in corners the scanner never looked at: 1 cm below the scanned floor so it only shows
+    # through holes, in the floor's median colour
+    fl = (np.abs(y) < 0.05) & (n[:, 1] > 0.8)
+    fp = np.c_[cx, np.full(len(cx), -0.01), cz]
+    fshade = np.median(rgb[fl], 0) if fl.any() else shade
+    out_m = np.r_[wp, cp, fp]
+    out_n = np.r_[wn, np.tile([0.0, -1.0, 0.0], (len(cp), 1)), np.tile([0.0, 1.0, 0.0], (len(fp), 1))]
+    out_c = np.r_[wc, np.tile(shade, (len(cp), 1)), np.tile(fshade, (len(fp), 1))]
+    back = ((out_m - t) / sc) @ R  # scene frame -> scan frame
+    return back, out_n @ R, np.clip(out_c, 0, 1), ceiling, len(wp), len(cp) + len(fp)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--mesh', type=Path, required=True)
@@ -230,6 +292,10 @@ def main():
     cam_y = cams[0] @ Rotation.from_quat(tr['rotation']).as_matrix()[1] * tr['scale'][1] + tr['position'][1]
     scene['eyeHeight'] = round(float(np.clip(np.median(cam_y) - scene['floorY'], 1.1, 1.7)), 2)
     print(f"  eye height {scene['eyeHeight']} m (median scanner height)")
+    fill_p, fill_n, fill_c, ceiling, nw, nc = fill_above(P[keep], N[keep], rgb[keep], scene)
+    v = np.concatenate([v, splats(fill_p, fill_n, fill_c, 0.03)])
+    scene['wallHeight'] = round(ceiling, 2)
+    print(f'  ceiling at {ceiling:.2f} m: added {nw:,} wall splats above the scan and {nc:,} ceiling + floor splats')
     a.work.mkdir(parents=True, exist_ok=True)
     out.mkdir(parents=True, exist_ok=True)
     ply = a.work / f'{a.name}_splats.ply'
