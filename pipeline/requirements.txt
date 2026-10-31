@@ -1,3 +1,5 @@
 # Wayfarer pipeline glue (navgrid + frame selection). Training deps: see docs/SETUP.md (nerfstudio + COLMAP).
 numpy>=1.24
 pillow>=10
+# Capture Coach AI survey/verify/review (optional: the coach works without it, minus personalisation)
+anthropic>=0.125
