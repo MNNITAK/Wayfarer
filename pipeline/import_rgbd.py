@@ -104,6 +104,15 @@ def alignment(P, poses, frames, K, ids):
 MIN_AGREE = 0.3  # share of near-surface points within 3 cm of the sensor depth; below it the frame's pose is off
 
 
+def depth_agree(d, z):
+    """Per point: does the sensor depth d confirm projected depth z? Plus whether the frame's pose is trustworthy."""
+    vis = (d > 0) & (np.abs(z - d) < 0.03 + 0.02 * z)  # the sensor saw this surface, not something in front
+    # judge the pose only on points near the surface the sensor saw: points hidden behind it fail the depth
+    # test legitimately, while a shifted pose moves every nearby point off by a few cm
+    near = (d > 0) & (np.abs(z - d) < 0.3)
+    return vis, vis.sum() >= MIN_AGREE * max(1, np.count_nonzero(near))
+
+
 def colorize(P, N, poses, frames, K, ids, log=print):
     """Average colour per point over frames where it is visible (depth test), weighted by view angle, distance
     and frame sharpness; frames whose pose disagrees with the mesh are skipped. Returns (rgb Nx3 0..1, weight N)."""
@@ -122,12 +131,8 @@ def colorize(P, N, poses, frames, K, ids, log=print):
         ok = (z > 0.2) & (z < 5) & (u >= 0) & (u < w - 1) & (v >= 0) & (v < h - 1)
         idx = np.flatnonzero(ok)
         ui, vi, zi = u[idx].astype(int), v[idx].astype(int), z[idx]
-        d = depth[vi, ui]
-        vis = (d > 0) & (np.abs(zi - d) < 0.03 + 0.02 * zi)  # the sensor saw this surface, not something in front
-        # judge the pose only on points near the surface the sensor saw: points hidden behind it fail the depth
-        # test legitimately, while a shifted pose moves every nearby point off by a few cm
-        near = (d > 0) & (np.abs(zi - d) < 0.3)
-        if vis.sum() < MIN_AGREE * max(1, np.count_nonzero(near)):
+        vis, good = depth_agree(depth[vi, ui], zi)
+        if not good:
             skipped += 1
             continue
         idx, ui, vi, zi = idx[vis], ui[vis], vi[vis], zi[vis]
