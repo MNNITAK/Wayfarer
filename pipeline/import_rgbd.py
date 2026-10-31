@@ -237,7 +237,7 @@ def fill_above(P, N, rgb, scene, size=0.03, ceiling=None):
 
 
 def read_points(path):
-    """(xyz Nx3 float64, rgb Nx3 0..1 or None) from a binary PLY point cloud (e.g. a LIDAR scan)."""
+    """(xyz Nx3 float64, rgb Nx3 0..1 or None, normals Nx3 or None) from a binary PLY point cloud (e.g. a LIDAR scan)."""
     with open(path, 'rb') as f:
         header = []
         while (line := f.readline().decode('ascii').strip()) != 'end_header':
@@ -246,7 +246,8 @@ def read_points(path):
         n = int(next(l.split()[2] for l in header if l.startswith('element vertex')))
         a = np.fromfile(f, dtype=props, count=n)
     rgb = np.stack([a['red'], a['green'], a['blue']], 1) / 255 if 'red' in a.dtype.names else None
-    return np.stack([a['x'], a['y'], a['z']], 1).astype(np.float64), rgb
+    nrm = np.stack([a['nx'], a['ny'], a['nz']], 1).astype(np.float32) if 'nx' in a.dtype.names else None
+    return np.stack([a['x'], a['y'], a['z']], 1).astype(np.float64), rgb, nrm
 
 
 def level(up):
@@ -384,16 +385,20 @@ def main():
     if a.lidar:
         # a tripod laser scan sees ceilings and every wall, in its own colours; the camera path only places it
         print(f'[3/5] LIDAR scan {a.lidar.name}: registering it to the RGB-D mesh')
-        L, Lrgb = read_points(a.lidar)
+        L, Lrgb, Ln = read_points(a.lidar)
         if Lrgb is None:
             sys.exit('the LIDAR scan has no colours')
         G = register_lidar(L, V, up_hint)
         del V, tri
         sel = voxel_pick(L, a.voxel)
         P, rgb = L[sel] @ G[:3, :3].T + G[:3, 3], Lrgb[sel]
-        del L, Lrgb
-        print(f'[4/5] normals for {len(P):,} points')
-        N = point_normals(P)
+        if Ln is not None:  # the scanner's own normals: cleaner at edges than estimating them
+            print(f'[4/5] {len(P):,} points with the scan\'s normals')
+            N = Ln[sel] @ G[:3, :3].T
+        else:
+            print(f'[4/5] normals for {len(P):,} points')
+            N = point_normals(P)
+        del L, Lrgb, Ln
         v = splats(P, N, rgb, a.voxel, spread=1.1)  # scan points are unevenly spaced: overlap more, no see-through specks
     else:
         print(f'[3/5] surface points every {a.voxel * 100:.1f} cm + normals')
