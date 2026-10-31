@@ -9,6 +9,8 @@ the surface normal, and the walkable grid comes from navgrid.build with the real
 
 Trajectory: Redwood .log (camera-to-world 4x4 per frame, OpenCV axes: x right, y down, z forward).
 Frames: <frames>/image/NNNNNN.jpg and <frames>/depth/NNNNNN.png (16-bit millimetres).
+With --lidar (a coloured laser scan of the same space, e.g. Redwood's merged & resampled scan), the scan replaces the
+mesh: it is registered to the mesh automatically and keeps its own colours, so ceilings and upper walls are complete.
 """
 import argparse
 import math
@@ -152,7 +154,7 @@ def colorize(P, N, poses, frames, K, ids, log=print):
     return rgb, wsum
 
 
-def splats(P, N, rgb, size):
+def splats(P, N, rgb, size, spread=0.7):
     """Flat Gaussians: wide along the surface, thin along the normal (scale_2 is the normal axis)."""
     n = N / np.linalg.norm(N, axis=1, keepdims=True)
     q = np.c_[1 + n[:, 2], -n[:, 1], n[:, 0], np.zeros(len(n))]  # rotates +z onto n: (w, x, y, z)
@@ -166,7 +168,7 @@ def splats(P, N, rgb, size):
     dc = (rgb - 0.5) / SH_C0
     out['f_dc_0'], out['f_dc_1'], out['f_dc_2'] = dc.T
     out['opacity'] = math.log(0.97 / 0.03)
-    out['scale_0'] = out['scale_1'] = math.log(size * 0.7)
+    out['scale_0'] = out['scale_1'] = math.log(size * spread)
     out['scale_2'] = math.log(size * 0.08)
     out['rot_0'], out['rot_1'], out['rot_2'], out['rot_3'] = q.T
     return out
@@ -234,6 +236,114 @@ def fill_above(P, N, rgb, scene, size=0.03, ceiling=None):
     return back, out_n @ R, np.clip(out_c, 0, 1), ceiling, len(wp), len(cp) + len(fp)
 
 
+def read_points(path):
+    """(xyz Nx3 float64, rgb Nx3 0..1 or None) from a binary PLY point cloud (e.g. a LIDAR scan)."""
+    with open(path, 'rb') as f:
+        header = []
+        while (line := f.readline().decode('ascii').strip()) != 'end_header':
+            header.append(line)
+        props = [(l.split()[2], navgrid.PLY_TYPES[l.split()[1]]) for l in header if l.startswith('property')]
+        n = int(next(l.split()[2] for l in header if l.startswith('element vertex')))
+        a = np.fromfile(f, dtype=props, count=n)
+    rgb = np.stack([a['red'], a['green'], a['blue']], 1) / 255 if 'red' in a.dtype.names else None
+    return np.stack([a['x'], a['y'], a['z']], 1).astype(np.float64), rgb
+
+
+def level(up):
+    """Rotation taking `up` to +y (Rodrigues)."""
+    u = up / np.linalg.norm(up)
+    v, c = np.cross(u, [0, 1, 0]), u[1]
+    vx = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+    return np.eye(3) + vx + vx @ vx / (1 + c) if c > -0.999 else np.diag([1.0, -1, -1])
+
+
+def floor_height(y):
+    """The floor is the densest height band in the lower half of the scan."""
+    h, e = np.histogram(y[y < np.median(y)], bins=200)
+    return e[np.argmax(h)]
+
+
+def register_lidar(L, V, up, log=print):
+    """4x4 taking LIDAR points L into the frame of mesh V (both metric): level both, find the yaw and shift that best
+    overlay their floor plans (wall slice 1.0-1.8 m, FFT cross-correlation per 1 deg), then refine with ICP."""
+    from scipy.spatial import cKDTree
+    Lp, Vp = L[voxel_pick(L, 0.03)], V[voxel_pick(V, 0.03)]
+    Rm = level(up)
+    M = Vp @ Rm.T
+    M[:, 1] -= floor_height(M[:, 1])
+    c, size = 0.05, 800
+
+    def raster(P):
+        g = np.zeros((size, size), np.float32)
+        ij = np.floor((P - P.mean(0)) / c).astype(int) + size // 2
+        ok = (ij >= 0).all(1) & (ij < size).all(1)
+        np.add.at(g, (ij[ok, 0], ij[ok, 1]), 1)
+        return np.minimum(g, 3)
+
+    wall = lambda P: P[(P[:, 1] > 1.0) & (P[:, 1] < 1.8)][:, [0, 2]]
+    A = wall(M)
+    Fa = np.fft.rfft2(raster(A))
+    best = (-1,)
+    for axis in range(3):  # the scanner's up axis is unknown: try each axis and sign
+        for sign in (1, -1):
+            up_l = np.zeros(3)
+            up_l[axis] = sign
+            Rl = level(up_l)
+            X = Lp @ Rl.T
+            X[:, 1] -= floor_height(X[:, 1])
+            B = wall(X)
+            if len(B) < 1000:
+                continue
+            for deg in range(360):
+                th = np.radians(deg)
+                Br = B @ np.array([[np.cos(th), -np.sin(th)], [np.sin(th), np.cos(th)]]).T
+                cc = np.fft.irfft2(Fa * np.conj(np.fft.rfft2(raster(Br))), s=(size, size))
+                k = np.unravel_index(np.argmax(cc), cc.shape)
+                if cc[k] > best[0]:
+                    best = (cc[k], Rl, X, th, (np.array(k) + size // 2) % size - size // 2, Br.mean(0))
+    _, Rl, X, th, k, bm = best
+    R2 = np.eye(3)
+    R2[np.ix_([0, 2], [0, 2])] = [[np.cos(th), -np.sin(th)], [np.sin(th), np.cos(th)]]
+    T2 = np.zeros(3)
+    T2[[0, 2]] = A.mean(0) - bm + k * c
+    lift = np.array([0, -floor_height((Lp @ Rl.T)[:, 1]), 0])
+    R, T = R2 @ Rl, R2 @ lift + T2  # lidar -> levelled mesh frame, coarse
+    Y = Lp @ R.T + T
+    tree = cKDTree(M)
+    for it in range(30):  # point-to-point ICP, tightening the match radius
+        d, i = tree.query(Y, distance_upper_bound=0.3 if it < 10 else 0.1)
+        ok = np.isfinite(d)
+        p, q = Y[ok], M[i[ok]]
+        U, _, Wt = np.linalg.svd((p - p.mean(0)).T @ (q - q.mean(0)))
+        Ri = (U @ Wt).T
+        if np.linalg.det(Ri) < 0:
+            Wt[-1] *= -1
+            Ri = (U @ Wt).T
+        Ti = q.mean(0) - Ri @ p.mean(0)
+        Y = Y @ Ri.T + Ti
+        R, T = Ri @ R, Ri @ T + Ti
+    d, _ = tree.query(Y)
+    log(f'  LIDAR registered: {np.mean(d < 0.05):.0%} of its points within 5 cm of the mesh (median {np.median(d[d < 0.1]) * 100:.1f} cm '
+        'where they overlap; the rest is what the RGB-D scan missed)')
+    floor_m = floor_height((Vp @ Rm.T)[:, 1])
+    out = np.eye(4)  # undo the mesh levelling: mesh = Rm^T (levelled + floor)
+    out[:3, :3] = Rm.T @ R
+    out[:3, 3] = Rm.T @ (T + [0, floor_m, 0])
+    return out
+
+
+def point_normals(P, k=12):
+    """Normal per point: the least-variance direction of its k nearest neighbours."""
+    from scipy.spatial import cKDTree
+    N = np.empty_like(P)
+    tree = cKDTree(P)
+    for s in range(0, len(P), 500_000):
+        _, i = tree.query(P[s:s + 500_000], k)
+        Q = P[i] - P[i].mean(1, keepdims=True)
+        N[s:s + 500_000] = np.linalg.eigh(np.einsum('nki,nkj->nij', Q, Q))[1][:, :, 0]
+    return N
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--mesh', type=Path, required=True)
@@ -243,6 +353,7 @@ def main():
     ap.add_argument('--title', help='display name')
     ap.add_argument('--intrinsics', default='525,525,319.5,239.5', help='fx,fy,cx,cy (default: PrimeSense)')
     ap.add_argument('--voxel', type=float, default=0.012, help='splat spacing in metres')
+    ap.add_argument('--lidar', type=Path, help='coloured LIDAR point cloud of the same space: replaces the mesh geometry')
     ap.add_argument('--step', type=int, default=15, help='use every Nth frame for colour')
     ap.add_argument('--work', type=Path, default=Path(__file__).resolve().parent.parent / 'work')
     a = ap.parse_args()
@@ -268,34 +379,51 @@ def main():
     if err > 0.05:
         print('  WARNING: some frames are poorly aligned; they will be skipped when colouring')
 
-    print(f'[3/5] surface points every {a.voxel * 100:.1f} cm + normals')
-    N = vertex_normals(V, tri)
-    sel = voxel_pick(V, a.voxel)
-    P, N = V[sel], N[sel]
-    del V, tri
-    print(f'  {len(P):,} points')
-
-    print(f'[4/5] colour from every {a.step}th frame')
-    ids = np.arange(0, len(poses), a.step)
-    rgb, wsum = colorize(P, N, poses, a.frames, K, ids)
-    keep = wsum > 0
-    print(f'  {keep.mean():.0%} of points seen in at least one frame; dropping the rest')
-    v = splats(P[keep], N[keep], rgb[keep], a.voxel)
-
-    print('[5/5] floor, walls, walkable grid')
     cams = (poses[:, :3, 3], poses[:, :3, 2], -poses[:, :3, 1])  # centre, forward, image-up
     up_hint = np.median(cams[2], 0)
+    if a.lidar:
+        # a tripod laser scan sees ceilings and every wall, in its own colours; the camera path only places it
+        print(f'[3/5] LIDAR scan {a.lidar.name}: registering it to the RGB-D mesh')
+        L, Lrgb = read_points(a.lidar)
+        if Lrgb is None:
+            sys.exit('the LIDAR scan has no colours')
+        G = register_lidar(L, V, up_hint)
+        del V, tri
+        sel = voxel_pick(L, a.voxel)
+        P, rgb = L[sel] @ G[:3, :3].T + G[:3, 3], Lrgb[sel]
+        del L, Lrgb
+        print(f'[4/5] normals for {len(P):,} points')
+        N = point_normals(P)
+        v = splats(P, N, rgb, a.voxel, spread=1.1)  # scan points are unevenly spaced: overlap more, no see-through specks
+    else:
+        print(f'[3/5] surface points every {a.voxel * 100:.1f} cm + normals')
+        N = vertex_normals(V, tri)
+        sel = voxel_pick(V, a.voxel)
+        P, N = V[sel], N[sel]
+        del V, tri
+        print(f'  {len(P):,} points')
+
+        print(f'[4/5] colour from every {a.step}th frame')
+        ids = np.arange(0, len(poses), a.step)
+        rgb, wsum = colorize(P, N, poses, a.frames, K, ids)
+        keep = wsum > 0
+        print(f'  {keep.mean():.0%} of points seen in at least one frame; dropping the rest')
+        P, N, rgb = P[keep], N[keep], rgb[keep]
+        v = splats(P, N, rgb, a.voxel)
+
+    print('[5/5] floor, walls, walkable grid')
     scene = navgrid.build(v, cams, up=up_hint, scale=1.0, cell=0.1)  # the scan is metric already
-    # look from where the scanner looked: a hand-held scan rarely sees above ~2 m, so a 1.6 m eye peers over the walls
-    from scipy.spatial.transform import Rotation
-    tr = scene['transform']
-    cam_y = cams[0] @ Rotation.from_quat(tr['rotation']).as_matrix()[1] * tr['scale'][1] + tr['position'][1]
-    scene['eyeHeight'] = round(float(np.clip(np.median(cam_y) - scene['floorY'], 1.1, 1.7)), 2)
-    print(f"  eye height {scene['eyeHeight']} m (median scanner height)")
-    fill_p, fill_n, fill_c, ceiling, nw, nc = fill_above(P[keep], N[keep], rgb[keep], scene)
-    v = np.concatenate([v, splats(fill_p, fill_n, fill_c, 0.03)])
-    scene['wallHeight'] = round(ceiling, 2)
-    print(f'  ceiling at {ceiling:.2f} m: added {nw:,} wall splats above the scan and {nc:,} ceiling + floor splats')
+    if not a.lidar:
+        # look from where the scanner looked: a hand-held scan rarely sees above ~2 m, so a 1.6 m eye peers over walls
+        from scipy.spatial.transform import Rotation
+        tr = scene['transform']
+        cam_y = cams[0] @ Rotation.from_quat(tr['rotation']).as_matrix()[1] * tr['scale'][1] + tr['position'][1]
+        scene['eyeHeight'] = round(float(np.clip(np.median(cam_y) - scene['floorY'], 1.1, 1.7)), 2)
+        print(f"  eye height {scene['eyeHeight']} m (median scanner height)")
+        fill_p, fill_n, fill_c, ceiling, nw, nc = fill_above(P, N, rgb, scene)
+        v = np.concatenate([v, splats(fill_p, fill_n, fill_c, 0.03)])
+        scene['wallHeight'] = round(ceiling, 2)
+        print(f'  ceiling at {ceiling:.2f} m: added {nw:,} wall splats above the scan and {nc:,} ceiling + floor splats')
     a.work.mkdir(parents=True, exist_ok=True)
     out.mkdir(parents=True, exist_ok=True)
     ply = a.work / f'{a.name}_splats.ply'
