@@ -83,6 +83,22 @@ coach still runs steps 3 and 4. Check a finished video from the command line wit
 
 This writes `web/public/scenes/home/` (`scene.sog`, `scene.json`, and a `grid.png` preview). Each step is resumable, and `--force <step>` re-runs from that step.
 
+### Finished RGB-D scans (e.g. Redwood indoor)
+
+A scan that already has a mesh, a metric camera trajectory (`.log`) and colour + depth frames needs no COLMAP:
+
+```bash
+# instant twin, no GPU: the mesh coloured from the photos (~1 min)
+python pipeline/import_rgbd.py --mesh apartment.ply --log apartment.log --frames rgbd/apartment --name apartment
+# photoreal twin: train a splat with the scan's poses, on a local GPU or a free Kaggle one
+python pipeline/rgbd_to_nerfstudio.py --mesh apartment.ply --log apartment.log --frames rgbd/apartment --out work/apartment_ns
+python pipeline/kaggle_train.py push --data work/apartment_ns --name apartment
+python pipeline/kaggle_train.py pull --name apartment --title Apartment --metric   # when the job has finished
+```
+
+Kaggle needs `pip install kaggle`, a token in `~/.kaggle/access_token`, and a phone-verified account; without the
+phone check, notebooks get no GPU.
+
 ## Repository layout
 
 ```
