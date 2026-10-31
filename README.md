@@ -91,7 +91,7 @@ A scan that already has a mesh, a metric camera trajectory (`.log`) and colour +
 # instant twin, no GPU: the mesh coloured from the photos (~1 min)
 python pipeline/import_rgbd.py --mesh apartment.ply --log apartment.log --frames rgbd/apartment --name apartment
 # complete geometry incl. ceilings: add the dataset's coloured LIDAR scan (registered automatically)
-python pipeline/import_rgbd.py ... --lidar lidar/apt.ply --voxel 0.015
+python pipeline/import_rgbd.py ... --lidar lidar/apt.ply --voxel 0.008   # 8 mm: sharp, ~30 MB
 # photoreal twin: train a splat with the scan's poses, on a local GPU or a free Kaggle one
 python pipeline/rgbd_to_nerfstudio.py --mesh apartment.ply --log apartment.log --frames rgbd/apartment --out work/apartment_ns
 python pipeline/kaggle_train.py push --data work/apartment_ns --name apartment
