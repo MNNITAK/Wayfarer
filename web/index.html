@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
   <title>Wayfarer</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cpath d=%22M16 2a10 10 0 0 0-10 10c0 7.5 10 18 10 18s10-10.5 10-18A10 10 0 0 0 16 2z%22 fill=%22%23ff8a3d%22/%3E%3Ccircle cx=%2216%22 cy=%2212%22 r=%224%22 fill=%22%230e1a2b%22/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/src/style.css" />
@@ -20,6 +20,7 @@
     <div class="actions">
       <a class="studio-link" href="./upload.html" title="Upload a new capture">+ New twin</a>
       <button id="btn-tag" title="Tag a POI at the crosshair (T)">+ Tag POI</button>
+      <button id="btn-map" title="Big map (M)">Map</button>
       <button id="btn-tour" title="Automatic guided tour for demo videos (P)">▶ Tour</button>
       <button id="btn-edit" title="Paint walls on the map (B)">Edit map</button>
       <button id="btn-export" title="Download scene.json with your map edits and POIs">Download scene</button>
@@ -36,6 +37,7 @@
   </div>
 
   <div id="look-label" hidden></div>
+  <div id="stick" aria-hidden="true"><div></div></div>
 
   <div id="edit-hint" hidden>Editing map: <b>left-drag</b> paints walls · <b>right-drag</b> erases · <b>B</b> to finish</div>
   <canvas id="minimap" title="Click to navigate there (M to enlarge)"></canvas>
@@ -69,6 +71,7 @@
       <p id="status">Loading scene…</p>
       <button id="start" class="primary" disabled>Click to explore</button>
       <p><a id="plan-link" target="_blank" rel="noopener" hidden>View floor plan ↗</a></p>
+      <p class="touch-help">Left thumb: drag the stick to walk · Right thumb: drag to look around · Tap a pin or search to get directions</p>
       <table class="keys">
         <tr><td>W A S D</td><td>move</td><td>Mouse</td><td>look</td></tr>
         <tr><td>Shift</td><td>run</td><td>F</td><td>fly / walk</td></tr>

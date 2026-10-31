@@ -11,7 +11,9 @@ const WALK_SPEED = 1.3; // m/s, for ETA
 
 // ---------- three.js setup ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// phones have 3x screens but splat fill rate is the bottleneck there: 1.5x looks the same at arm's length
+const coarse = matchMedia('(pointer: coarse)').matches;
+renderer.setPixelRatio(Math.min(devicePixelRatio, coarse ? 1.5 : 2));
 renderer.setSize(innerWidth, innerHeight);
 $('app').appendChild(renderer.domElement);
 const labels = new CSS2DRenderer();
@@ -73,6 +75,12 @@ async function boot() {
   const sp = data.spawn ?? { x: grid.ox + grid.w * grid.cell / 2, z: grid.oz + grid.h * grid.cell / 2, yaw: 0 };
   player.teleport(sp.x, sp.z, sp.yaw);
   if (import.meta.env.DEV) window.wayfarer = { player, camera, data }; // lets scripted checks place the camera
+  if (player.touch) {
+    document.body.classList.add('touch');
+    player.bindStick($('stick'));
+    $('start').textContent = 'Tap to explore';
+    $('q').placeholder = 'Search rooms or items';
+  }
   player.onLockChange = (locked) => {
     if (!locked) return;
     $('overlay').hidden = true;
@@ -326,8 +334,12 @@ function show(id) { $(id).hidden = false; }
 function hide(id) { $(id).hidden = true; }
 
 function wireUi() {
-  $('start').addEventListener('click', () => player.lock());
-  renderer.domElement.addEventListener('click', () => { if (!player.locked) { hide('poi-card'); player.lock(); } });
+  $('start').addEventListener('click', () => {
+    if (player.touch) document.documentElement.requestFullscreen?.().catch(() => {}); // Android; iPhone ignores it
+    player.lock();
+  });
+  renderer.domElement.addEventListener('click', () => { if (!player.locked || player.touch) { hide('poi-card'); player.lock(); } });
+  $('btn-map').addEventListener('click', () => $('minimap').classList.toggle('big'));
 
   addEventListener('keydown', (e) => {
     if (isTyping(e)) {
@@ -391,7 +403,7 @@ function wireUi() {
 
   $('nav-stop').addEventListener('click', stopRoute);
   $('minimap').addEventListener('click', (e) => {
-    if (player.locked || editing) return;
+    if ((player.locked && !player.touch) || editing) return;
     const [x, z] = minimap.toWorld(e.offsetX, e.offsetY);
     startRoute({ name: 'Dropped pin', x, z });
   });
