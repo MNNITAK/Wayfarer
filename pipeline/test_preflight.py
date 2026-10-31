@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 
 from preflight import (FPS, clip_issues, frame_metrics, narrow_regions, read_images_bin, read_points_bin,
-                       review, stretches)
+                       retakes, review, stretches)
 
 rng = np.random.default_rng(0)
 
@@ -20,8 +20,9 @@ def box_blur(a, k):
     return a
 
 
-# a textured "room" panorama; the camera pans across it
-pano = box_blur(rng.uniform(0, 255, (300, 6000)), 2)
+# a "room" panorama with fine texture and large shapes (furniture edges survive motion blur); the camera pans across it
+edges = np.repeat(rng.uniform(0, 255, (6, 6000 // 40)), 40, axis=1)  # blocks 40 px wide, 6 bands tall
+pano = box_blur(rng.uniform(0, 255, (300, 6000)), 2) + 2 * np.repeat(edges, 50, axis=0)
 pano = (pano - pano.min()) / np.ptp(pano) * 200 + 30
 
 
@@ -44,6 +45,14 @@ def clip(speeds, blur_at=(), dark_at=(), blank_at=()):
 assert stretches([0, 1, 1, 1, 0, 0, 0, 0, 1], fps=1, min_s=2) == [(1.0, 4.0)]
 assert stretches([1, 0, 1, 1], fps=1, min_s=1, gap=1) == [(0.0, 4.0)]
 print('ok: stretches')
+
+r = retakes([dict(kind='blur', severity='fail', clip='take 1', t0=3, t1=8),
+             dict(kind='turn', severity='fail', clip='take 1', t0=7, t1=9),
+             dict(kind='dark', severity='warn', clip='take 1', t0=20, t1=22),
+             dict(kind='blank', severity='fail', clip='take 2', t0=3, t1=6)])
+assert [(x['clip'], x['t0'], x['t1']) for x in r] == [('take 1', 3, 9), ('take 2', 3, 6)], r
+assert 'move slower' in r[0]['instruction'] and 'turn slowly' in r[0]['instruction']
+print('ok: overlapping problems merge into one retake; warnings need none')
 
 # 10 s calm walk with a 3.5 s blurred stretch at 4 s
 n = 10 * FPS

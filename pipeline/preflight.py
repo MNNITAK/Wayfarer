@@ -29,7 +29,7 @@ HFOV = 65.0             # horizontal field of view (deg) of a phone's 1x main ca
 MAX_TURN = 30.0         # deg/s
 DARK = 35               # mean grey level (0..255) below which the phone exposes long and blurs
 EXPOSURE_JUMP = 18      # grey-level jump between two frames 1/8 s apart while the view barely moved: AE not locked
-BLANK = 2.5             # mean |gradient| (grey levels/px at 240 px wide) of a featureless wall
+BLANK = 1.5             # mean |gradient| (grey levels/px at 240 px wide) of a featureless wall
 MIN_REGISTERED = 0.90   # quick SfM gate
 MIN_SPREAD = 15.0       # deg between the rays that saw a wall point
 QUICK_FRAMES, QUICK_SIDE = 120, 640
@@ -110,7 +110,9 @@ def clip_issues(m, clip, fps=FPS):
     s = m['sharpness']
     r = max(2, int(2 * fps))
     local = np.array([s[max(0, i - r):i + r + 1].max() for i in range(len(s))])
-    blurred = (s < SHARP_RATIO * local) | (s < 0.3 * np.median(s))
+    blank, dark = m['texture'] < BLANK, m['brightness'] < DARK
+    # a blank wall or a dark frame has little fine detail too: report it as what it is, not as blur
+    blurred = ((s < SHARP_RATIO * local) | (s < 0.3 * np.median(s))) & ~blank & ~dark
     sharp_frac = 1 - blurred.mean() if len(s) else 0.0
     for t0, t1 in stretches(blurred, fps, 1.0):
         issues.append(dict(kind='blur', severity='fail' if t1 - t0 >= 3 else 'warn', clip=clip, t0=t0, t1=t1,
@@ -119,27 +121,37 @@ def clip_issues(m, clip, fps=FPS):
     for t0, t1 in stretches(turn > MAX_TURN, fps, 0.5):
         issues.append(dict(kind='turn', severity='fail' if t1 - t0 >= 2 else 'warn', clip=clip, t0=t0, t1=t1,
                            message=f'{fmt(t0)}–{fmt(t1)} turned faster than {MAX_TURN:.0f}°/s'))
-    for t0, t1 in stretches(m['brightness'] < DARK, fps, 1.0):
+    for t0, t1 in stretches(dark, fps, 1.0):
         issues.append(dict(kind='dark', severity='fail' if t1 - t0 >= 2 else 'warn', clip=clip, t0=t0, t1=t1,
                            message=f'{fmt(t0)}–{fmt(t1)} too dark'))
-    for t0, t1 in stretches(m['texture'] < BLANK, fps, 1.5):
+    for t0, t1 in stretches(blank & ~dark, fps, 1.5):
         issues.append(dict(kind='blank', severity='fail' if t1 - t0 >= 3 else 'warn', clip=clip, t0=t0, t1=t1,
                            message=f'{fmt(t0)}–{fmt(t1)} only a blank surface in view'))
     jumps = np.abs(np.diff(m['brightness'])) > EXPOSURE_JUMP
     still = np.nan_to_num(m['turn'][1:], nan=99) < 10
     for i in np.flatnonzero(jumps & still)[:5]:
-        t = (i + 1) / fps
+        t = float((i + 1) / fps)
         issues.append(dict(kind='exposure', severity='warn', clip=clip, t0=t, t1=t + 1 / fps,
                            message=f'{fmt(t)} brightness jumped while the view stayed put'))
     return issues, float(sharp_frac)
 
 
-def retake(issue):
-    fix = RETAKE_FIX.get(issue['kind'], issue.get('fix', 'move slowly'))
-    return dict(clip=issue['clip'], t0=issue['t0'], t1=issue['t1'],
-                instruction=f"Film a short extra clip covering what you saw at {fmt(issue['t0'])}–{fmt(issue['t1'])} "
-                            f"of {issue['clip']}: start on a view you already filmed, {fix}, and end on a view you "
-                            'already filmed.')
+def retakes(issues):
+    """One short retake per stretch of footage: failing issues that overlap in the same clip are merged."""
+    out = []
+    for i in sorted((i for i in issues if i['severity'] == 'fail' and i.get('clip')), key=lambda i: (i['clip'], i['t0'])):
+        fix = RETAKE_FIX.get(i['kind'], i.get('fix', 'move slowly'))
+        if out and out[-1]['clip'] == i['clip'] and i['t0'] <= out[-1]['t1'] + 1:
+            out[-1]['t1'] = max(out[-1]['t1'], i['t1'])
+            if fix not in out[-1]['fixes']:
+                out[-1]['fixes'].append(fix)
+        else:
+            out.append(dict(clip=i['clip'], t0=i['t0'], t1=i['t1'], fixes=[fix]))
+    for r in out:
+        r['instruction'] = (f"Film a short extra clip covering what you saw at {fmt(r['t0'])}–{fmt(r['t1'])} of "
+                            f"{r['clip']}: start on a view you already filmed, {'; '.join(r.pop('fixes'))}, and end on "
+                            'a view you already filmed.')
+    return out
 
 
 def read_gray(paths):
@@ -147,7 +159,7 @@ def read_gray(paths):
     return [np.asarray(Image.open(p).convert('L'), dtype=np.float32) for p in paths]
 
 
-def check_metrics(clips, tmp, log=print, retake_from=None):
+def check_metrics(clips, tmp, log=print, retake_from=None, names=None):
     """Clips before `retake_from` already have retakes filmed for their problems: those stretches only warn now."""
     issues, sharp, seconds = [], [], 0.0
     for i, src in enumerate(clips):
@@ -157,7 +169,7 @@ def check_metrics(clips, tmp, log=print, retake_from=None):
              d / '%05d.jpg'])
         frames = sorted(d.glob('*.jpg'))
         m = frame_metrics(read_gray(frames))
-        found, frac = clip_issues(m, Path(src).name)
+        found, frac = clip_issues(m, names[i] if names else Path(src).name)
         if retake_from is not None and i < retake_from:
             for f in found:
                 if f['severity'] == 'fail':
@@ -165,7 +177,7 @@ def check_metrics(clips, tmp, log=print, retake_from=None):
         issues += found
         sharp.append(frac * len(frames))
         seconds += len(frames) / FPS
-        log(f'  {Path(src).name}: {len(frames) / FPS:.0f} s, {frac:.0%} sharp, {len(found)} issue(s)')
+        log(f'  {names[i] if names else Path(src).name}: {len(frames) / FPS:.0f} s, {frac:.0%} sharp, {len(found)} issue(s)')
     sharp_frac = sum(sharp) / max(1, seconds * FPS)
     if sharp_frac < MIN_SHARP:
         issues.insert(0, dict(kind='blur', severity='fail', clip=None, t0=None, t1=None,
@@ -264,20 +276,19 @@ def camera_centers(images):
 
 
 # ---------- the review ----------
-def review(clips, work, log=print, quick_sfm=None, retake_from=None):
+def review(clips, work, log=print, quick_sfm=None, retake_from=None, names=None):
     """Run the checks; returns the report dict (also written to work/report.json)."""
     work = Path(work)
     work.mkdir(parents=True, exist_ok=True)
     thumbs = work / 'thumbs'
     shutil.rmtree(thumbs, ignore_errors=True)
     thumbs.mkdir()
-    names = [Path(c).name for c in clips]
+    names = names or [Path(c).name for c in clips]
     report = {'pass': False, 'clips': names, 'checks': [], 'issues': [], 'retakes': [], 'stats': {}}
 
     def done(name, status, summary, issues=()):
         report['checks'].append(dict(name=name, status=status, summary=summary))
         report['issues'] += list(issues)
-        report['retakes'] += [retake(i) for i in issues if i['severity'] == 'fail' and i.get('clip')]
         log(f'  {name}: {status} - {summary}')
         return status != 'fail'
 
@@ -286,6 +297,7 @@ def review(clips, work, log=print, quick_sfm=None, retake_from=None):
             if not any(c['name'] == name for c in report['checks']):
                 report['checks'].append(dict(name=name, status='skipped', summary='after an earlier failure'))
         report['pass'] = ok
+        report['retakes'] = retakes(report['issues'])
         (work / 'report.json').write_text(json.dumps(report, indent=1))
         return report
 
@@ -293,7 +305,7 @@ def review(clips, work, log=print, quick_sfm=None, retake_from=None):
         tmp = Path(tmp)
         log('[1/3] metrics')
         try:
-            issues, stats = check_metrics(clips, tmp, log, retake_from)
+            issues, stats = check_metrics(clips, tmp, log, retake_from, names)
         except SystemExit as e:
             done('metrics', 'fail', f'could not read the video ({e})')
             return finish(False)
@@ -369,13 +381,15 @@ def main():
     ap.add_argument('clips', nargs='+', type=Path, help='capture video(s), in order')
     ap.add_argument('--work', type=Path, required=True, help='scratch dir; report.json and thumbs/ are written here')
     ap.add_argument('--no-sfm', action='store_true', help='skip the quick COLMAP and view-angle checks')
+    ap.add_argument('--names', nargs='+', help='display names of the clips, in the same order')
     ap.add_argument('--retake-from', type=int, help='index of the first retake clip; earlier clips\' local problems '
                                                     'count as covered')
     a = ap.parse_args()
     for c in a.clips:
         if not c.exists():
             sys.exit(f'input not found: {c}')
-    r = review(a.clips, a.work, quick_sfm=False if a.no_sfm else None, retake_from=a.retake_from)
+    r = review(a.clips, a.work, quick_sfm=False if a.no_sfm else None, retake_from=a.retake_from,
+               names=a.names if a.names and len(a.names) == len(a.clips) else None)
     print('PASS: ready to build' if r['pass'] else f"FAIL: {len(r['retakes'])} retake(s) suggested")
     for t in r['retakes']:
         print('  -', t['instruction'])
