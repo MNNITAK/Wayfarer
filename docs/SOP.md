@@ -2,6 +2,8 @@
 
 How to film an indoor space with an ordinary smartphone so the pipeline produces a sharp, metric, walkable digital twin. Every rule exists because of a specific failure mode in reconstruction; the reason is given next to it.
 
+You don't have to memorise this: the **Capture Coach** (`capture.html` on your phone, see the README) turns these rules into instructions for your room, coaches you live while you film, and checks the take before the build.
+
 ## 0. Kit
 
 | Item | Why |
