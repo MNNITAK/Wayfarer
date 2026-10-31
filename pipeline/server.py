@@ -6,6 +6,7 @@
   POST /api/jobs   {"uploads": [ids...], "title", "ceiling", "quality"}  (several clips -> one connected space)
   GET  /api/jobs/<id>                                              -> status, step, log tail
   GET  /api/scenes                                                 -> reconstructed scenes
+  GET  /api/lan                                                    -> this PC's LAN address, for the phone URL
 
 Capture Coach sessions (a capture is checked and re-filmed until it meets the pipeline's needs, then built):
   POST /api/sessions   {"title", "ceiling"}                        -> {id}
@@ -16,6 +17,7 @@ Capture Coach sessions (a capture is checked and re-filmed until it meets the pi
 """
 import json
 import os
+import socket
 import re
 import shutil
 import subprocess
@@ -88,6 +90,16 @@ def run_job(job):
         log.close()
         job['status'] = 'done' if p.returncode == 0 else 'failed'
         job['finished'] = time.time()
+
+
+def lan_ip():
+    """The address phones on the same Wi-Fi reach this PC at (no packet is sent: UDP connect only picks a route)."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(('10.255.255.255', 1))
+            return sock.getsockname()[0]
+    except OSError:
+        return None
 
 
 def session_dir(s):
@@ -169,6 +181,8 @@ class Handler(BaseHTTPRequestHandler):
                     scenes.append({'id': d.name, 'name': s.get('name', d.name), 'splat': bool(s.get('splat')), 'pois': len(s.get('pois', [])), 'psnr': s.get('stats', {}).get('psnr'),
                                    'updated': f.stat().st_mtime})
             return self.send_json(scenes)
+        if url.path == '/api/lan':
+            return self.send_json({'ip': lan_ip(), 'phonePort': int(os.environ.get('WAYFARER_PHONE_PORT', 5174))})
         if url.path.startswith('/api/jobs/'):
             job = jobs.get(url.path.rsplit('/', 1)[-1])
             if not job:
