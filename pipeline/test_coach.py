@@ -1,10 +1,12 @@
-"""Self-check for the Capture Coach agents with the Claude API stubbed out. Run: python pipeline/test_coach.py"""
+"""Self-check for the Capture Coach agents, with the Claude API and Ollama stubbed out. Run: python pipeline/test_coach.py"""
 import base64
 import io
 import json
 import shutil
 import subprocess
 import tempfile
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -38,6 +40,7 @@ PLAN = {
     'settings': ['1x lens'], 'notes': [],
 }
 
+coach.PROVIDER = 'claude'  # the stubbed-client tests below; Ollama is checked at the end
 with tempfile.TemporaryDirectory() as d:
     d = Path(d)
     photos = []
@@ -81,7 +84,72 @@ with tempfile.TemporaryDirectory() as d:
         r = coach.review_coverage(plan, [d / 'take.mp4'], client=stub)
         sent = [b for b in stub.calls[0]['messages'][0]['content'] if b['type'] == 'image']
         labels = [b['text'] for b in stub.calls[0]['messages'][0]['content'] if b['type'] == 'text']
-        assert r['ok'] and len(sent) == coach.REVIEW_FRAMES and labels[0] == 'take 1 at 0:00', labels[:2]
+        assert r['ok'] and len(sent) == coach.review_frames() and labels[0] == 'take 1 at 0:00', labels[:2]
         print(f'ok: review sends {len(sent)} labelled frames spread over the take')
     else:
         print('skip: ffmpeg not on PATH, review frame sampling not run')
+
+
+# Ollama: a fake server answers /api/chat and /api/tags like the real one
+seen = []
+
+
+class FakeOllama(BaseHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+    def reply(self, obj, code=200):
+        body = json.dumps(obj).encode()
+        self.send_response(code)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        self.reply({'models': [{'name': 'qwen2.5vl:7b'}]})
+
+    def do_POST(self):
+        req = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+        seen.append(req)
+        if req['model'] != 'qwen2.5vl:7b':
+            return self.reply({'error': f"model '{req['model']}' not found"}, 404)
+        self.reply({'message': {'role': 'assistant', 'content': json.dumps(PLAN)}})
+
+
+srv = HTTPServer(('127.0.0.1', 0), FakeOllama)
+threading.Thread(target=srv.serve_forever, daemon=True).start()
+coach.PROVIDER, coach.OLLAMA_URL = 'ollama', f'http://127.0.0.1:{srv.server_port}'
+with tempfile.TemporaryDirectory() as d:
+    d = Path(d)
+    photos = []
+    for i in range(15):
+        p = d / f'p{i:02d}.jpg'
+        Image.fromarray(np.random.default_rng(i).integers(0, 255, (1500, 2000, 3), dtype=np.uint8)).save(p)
+        photos.append(p)
+    assert coach.available()
+    plan = coach.plan(photos)
+    req = seen[-1]
+    user = req['messages'][1]
+    assert req['format'] == coach.PLAN_SCHEMA and req['options']['num_ctx'] == coach.OLLAMA_CTX
+    assert req['messages'][0]['role'] == 'system' and 'capture' in req['messages'][0]['content'].lower()
+    assert len(user['images']) == coach.MAX_PLAN_PHOTOS and '[image 12]' in user['content'] and 'p14.jpg' in user['content']
+    assert max(Image.open(io.BytesIO(base64.b64decode(user['images'][0]))).size) == 640
+    assert plan['hazards'][-1]['id'] == 'marker'
+    print('ok: Ollama gets the schema as format, 12 evenly picked 640 px photos and a big enough context')
+
+    coach.OLLAMA_MODEL = 'llava:missing'
+    try:
+        coach.plan(photos[:2])
+        raise AssertionError('missing model not reported')
+    except coach.CoachError as e:
+        assert 'ollama pull llava:missing' in str(e)
+    assert not coach.available()
+    coach.OLLAMA_URL = 'http://127.0.0.1:9'  # nothing listens here
+    try:
+        coach.plan(photos[:2])
+        raise AssertionError('Ollama down not reported')
+    except coach.CoachError as e:
+        assert 'not running' in str(e)
+    print('ok: a missing model or a stopped Ollama gives a clear next step')
+srv.shutdown()
