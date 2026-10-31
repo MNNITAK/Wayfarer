@@ -54,3 +54,17 @@ a first-person web twin. A capture is good when every stage can do its job.
 ## 7. Room preparation
 Lights on; fans and moving objects off/out; interior doors fully open; screens off; big mirrors covered; personal
 documents and photos removed (the twin is photorealistic); marker placed; ceiling height measured.
+
+## 8. Numbers the automatic checks use
+| Check | Value | Where |
+|---|---|---|
+| Motion blur | sharpness < 0.55x the sharpest frame within 2 s | preflight, live guide |
+| Turn speed | > 30 deg/s (image motion, 65 deg lens; gyro on the phone) | preflight, live guide |
+| Too dark | mean grey < 35 of 255 | preflight, live guide |
+| Blank wall | mean gradient < 1.5 grey levels/px at 240 px wide | preflight, live guide |
+| Exposure jump | grey level jumps > 18 in 1/8 s while the view is still | preflight |
+| Camera poses | >= 90 % registered, one model (120 frames, 640 px) | preflight |
+| View angles | median ray spread >= 15 deg per floor-plan cell | preflight |
+
+The blur, dark, blank and exposure numbers are first estimates from synthetic footage; tune them on real takes
+(a take that builds well should pass, a take that failed in the main build should not).

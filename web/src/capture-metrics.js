@@ -5,7 +5,7 @@ export const LIVE_WIDTH = 240;   // analysis frame width; texture threshold is c
 export const SHARP_RATIO = 0.55; // blurred if below this fraction of the sharpest frame in the last 2 s
 export const MAX_TURN = 30;      // deg/s
 export const DARK = 35;          // mean grey level
-export const BLANK = 2.5;        // mean |gradient| at 240 px wide
+export const BLANK = 1.5;        // mean |gradient| at 240 px wide
 export const SECTORS = 12;       // coverage ring: 30 deg each
 export const SECTOR_SECONDS = 1.5; // good footage needed per sector
 
