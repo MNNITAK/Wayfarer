@@ -1,6 +1,7 @@
 import { isFree } from './nav.js';
 
 // First-person walker: pointer-lock mouse look, WASD with acceleration, grid collision.
+// On touch screens there is no pointer lock: an on-screen stick moves, dragging anywhere else looks.
 export class Player {
   constructor(camera, dom, grid, { eyeHeight = 1.6, floorY = 0, radius = 0.22 } = {}) {
     Object.assign(this, { camera, dom, grid, eyeHeight, floorY, radius });
@@ -10,6 +11,9 @@ export class Player {
     this.fly = false;
     this.keys = new Set();
     this.onLockChange = () => {};
+    this.touch = matchMedia('(pointer: coarse)').matches;
+    this.started = false; // touch mode: stays "locked" once the visitor taps Start
+    this.stick = { f: 0, s: 0 };
 
     addEventListener('keydown', (e) => { if (!isTyping(e)) this.keys.add(e.code); });
     addEventListener('keyup', (e) => this.keys.delete(e.code));
@@ -20,11 +24,53 @@ export class Player {
       this.yaw -= e.movementX * 0.0022;
       this.pitch = Math.max(-1.45, Math.min(1.45, this.pitch - e.movementY * 0.0022));
     });
+    if (this.touch) this.dragToLook();
   }
 
-  get locked() { return document.pointerLockElement === this.dom; }
-  lock() { this.dom.requestPointerLock?.(); }
-  unlock() { if (this.locked) document.exitPointerLock(); }
+  get locked() { return this.touch ? this.started : document.pointerLockElement === this.dom; }
+  lock() {
+    if (!this.touch) return this.dom.requestPointerLock?.();
+    if (!this.started) { this.started = true; this.onLockChange(true); }
+  }
+  unlock() { if (!this.touch && this.locked) document.exitPointerLock(); }
+
+  dragToLook() {
+    let id = null, lx = 0, ly = 0;
+    this.dom.addEventListener('pointerdown', (e) => {
+      if (id !== null || e.pointerType === 'mouse') return;
+      id = e.pointerId; lx = e.clientX; ly = e.clientY;
+    });
+    addEventListener('pointermove', (e) => {
+      if (e.pointerId !== id || !this.started) return;
+      const k = 4 / Math.max(innerWidth, innerHeight); // a full-width swipe turns ~200°
+      this.yaw += (e.clientX - lx) * k;
+      this.pitch = Math.max(-1.45, Math.min(1.45, this.pitch + (e.clientY - ly) * k));
+      lx = e.clientX; ly = e.clientY;
+    });
+    const end = (e) => { if (e.pointerId === id) id = null; };
+    addEventListener('pointerup', end); addEventListener('pointercancel', end);
+  }
+
+  // on-screen joystick: el is the base, its first child the knob
+  bindStick(el) {
+    const knob = el.firstElementChild;
+    let id = null, cx = 0, cy = 0;
+    const set = (x, y) => {
+      const r = el.clientWidth / 2, d = Math.hypot(x, y), k = d > r ? r / d : 1;
+      x *= k; y *= k;
+      knob.style.transform = `translate(${x}px, ${y}px)`;
+      this.stick = { f: -y / r, s: x / r };
+    };
+    el.addEventListener('pointerdown', (e) => {
+      if (id !== null) return;
+      id = e.pointerId; el.setPointerCapture(id);
+      const b = el.getBoundingClientRect(); cx = b.left + b.width / 2; cy = b.top + b.height / 2;
+      set(e.clientX - cx, e.clientY - cy);
+    });
+    el.addEventListener('pointermove', (e) => { if (e.pointerId === id) set(e.clientX - cx, e.clientY - cy); });
+    const end = (e) => { if (e.pointerId === id) { id = null; set(0, 0); } };
+    el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+  }
 
   teleport(x, z, yaw = this.yaw) {
     this.x = x; this.z = z; this.yaw = yaw; this.vx = this.vz = 0;
@@ -45,7 +91,9 @@ export class Player {
     const speed = (this.fly ? 4 : 1.6) * (run ? 2.2 : 1);
     let f = (k.has('KeyW') || k.has('ArrowUp') ? 1 : 0) - (k.has('KeyS') || k.has('ArrowDown') ? 1 : 0);
     let s = (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0);
-    const len = Math.hypot(f, s) || 1; f /= len; s /= len;
+    f += this.stick.f; s += this.stick.s; // analog: a half-pushed stick walks at half speed
+    const len = Math.hypot(f, s);
+    if (len > 1) { f /= len; s /= len; }
     const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
     // forward is -z at yaw 0
     const tx = (-sin * f + cos * s) * speed, tz = (-cos * f - sin * s) * speed;
