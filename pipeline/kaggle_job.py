@@ -22,11 +22,14 @@ def run(*cmd):
     subprocess.run([str(c) for c in cmd], check=True)
 
 
-run('nvidia-smi', '--query-gpu=name,memory.total', '--format=csv')
+import torch  # noqa: E402
+
+if not torch.cuda.is_available():
+    sys.exit('NO GPU in this session. Kaggle only attaches GPUs to phone-verified accounts '
+             '(kaggle.com > Settings > Phone verification) and while weekly GPU quota is left.')
+print('GPU:', torch.cuda.get_device_name(0), f'{torch.cuda.get_device_properties(0).total_memory / 2**30:.0f} GB', flush=True)
 # gsplat compiles its CUDA kernels on first use; build only for this GPU
-os.environ['TORCH_CUDA_ARCH_LIST'] = subprocess.run(
-    [sys.executable, '-c', 'import torch; print("%d.%d" % torch.cuda.get_device_capability())'],
-    capture_output=True, text=True, check=True).stdout.strip()
+os.environ['TORCH_CUDA_ARCH_LIST'] = '%d.%d' % torch.cuda.get_device_capability()
 run(sys.executable, '-m', 'pip', 'install', '-q', 'nerfstudio', 'ninja')
 
 # the dataset: transforms.json + images/ (Kaggle unpacks zipped folders, but handle a leftover images.zip too)
