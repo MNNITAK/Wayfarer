@@ -11,7 +11,8 @@ export class Player {
     this.fly = false;
     this.keys = new Set();
     this.onLockChange = () => {};
-    this.touch = matchMedia('(pointer: coarse)').matches;
+    // no pointer lock at all (iPhone Safari, some in-app browsers) also means touch controls
+    this.touch = matchMedia('(pointer: coarse)').matches || !('requestPointerLock' in Element.prototype);
     this.started = false; // touch mode: stays "locked" once the visitor taps Start
     this.stick = { f: 0, s: 0 };
 
@@ -29,7 +30,12 @@ export class Player {
 
   get locked() { return this.touch ? this.started : document.pointerLockElement === this.dom; }
   lock() {
-    if (!this.touch) return this.dom.requestPointerLock?.();
+    if (!this.touch) {
+      // browser refused the lock (iframe, permissions): still close the overlay; clicking the scene retries
+      const refused = () => this.onLockChange(true);
+      document.addEventListener('pointerlockerror', refused, { once: true });
+      return this.dom.requestPointerLock()?.catch?.(refused);
+    }
     if (!this.started) { this.started = true; this.onLockChange(true); }
   }
   unlock() { if (!this.touch && this.locked) document.exitPointerLock(); }
