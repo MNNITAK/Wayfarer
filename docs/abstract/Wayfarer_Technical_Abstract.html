@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wayfarer Technical Abstract</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4; margin: 0; }
+  :root {
+    --ink: #0f1b2b; --ink2: #33445a; --muted: #6a7a8c; --line: #dfe4ea; --soft: #f4f6f9;
+    --navy: #0f2238; --accent: #e8702a; --accent-soft: #fff1e6; --cyan: #1d8fb3; --cyan-soft: #e6f4f9;
+    --green: #2f9e6b; --green-soft: #e7f6ef; --violet: #6b5bd2; --violet-soft: #efedfb;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #fff; }
+  body { font: 8.6pt/1.42 Inter, "Helvetica Neue", Arial, sans-serif; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page { width: 210mm; height: 297mm; padding: 11mm 13mm 10mm; position: relative; overflow: hidden; break-after: page; display: flex; flex-direction: column; }
+  .page:last-child { break-after: auto; }
+  .foot { position: absolute; left: 13mm; right: 13mm; bottom: 5.5mm; display: flex; justify-content: space-between; font-size: 7pt; color: var(--muted); border-top: 1px solid var(--line); padding-top: 3px; }
+  .foot b { color: var(--accent); font-weight: 700; }
+  .runhead { display: flex; justify-content: space-between; align-items: center; font-size: 7.2pt; color: var(--muted); margin-bottom: 5mm; padding-bottom: 2.5mm; border-bottom: 2px solid var(--navy); }
+  .runhead .brand { font-weight: 800; color: var(--navy); letter-spacing: .02em; font-size: 8.5pt; }
+  .runhead .brand span { color: var(--accent); }
+
+  /* cover */
+  .hero { background: linear-gradient(120deg, #0f2238 0%, #173a5c 62%, #1d5577 100%); color: #fff; border-radius: 10px; padding: 7mm 8mm 6mm; position: relative; overflow: hidden; }
+  .hero::after { content: ""; position: absolute; right: -30mm; top: -30mm; width: 95mm; height: 95mm; border-radius: 50%; background: radial-gradient(circle, rgba(232,112,42,.35), rgba(232,112,42,0) 70%); }
+  .hero .tag { font-size: 7.2pt; letter-spacing: .14em; text-transform: uppercase; color: #ffb68a; font-weight: 700; }
+  .hero h1 { font-size: 25pt; line-height: 1.05; margin: 2mm 0 1.5mm; font-weight: 800; letter-spacing: -.01em; }
+  .hero h1 span { color: var(--accent); }
+  .hero .lead { font-size: 10pt; color: #d4e2ef; max-width: 150mm; margin: 0; }
+  .ids { display: grid; grid-template-columns: 1.25fr 1fr 1fr; gap: 3mm; margin-top: 4.5mm; position: relative; z-index: 1; }
+  .idbox { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.22); border-radius: 6px; padding: 2mm 3mm; }
+  .idbox label { display: block; font-size: 6.6pt; letter-spacing: .1em; text-transform: uppercase; color: #9fb7cc; font-weight: 600; }
+  .idbox .fill { display: block; height: 5.2mm; border-bottom: 1.2px dashed rgba(255,255,255,.55); margin-top: 1mm; }
+  .links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin-top: 3mm; position: relative; z-index: 1; font-size: 7.6pt; }
+  .links div { color: #d4e2ef; }
+  .links b { color: #fff; display: block; font-size: 6.6pt; letter-spacing: .1em; text-transform: uppercase; color: #9fb7cc; }
+  .links .fill { display: inline-block; width: 100%; height: 4.4mm; border-bottom: 1.2px dashed rgba(255,255,255,.55); }
+
+  h2 { font-size: 12pt; margin: 4.2mm 0 1.8mm; font-weight: 800; color: var(--navy); display: flex; align-items: center; gap: 2.4mm; }
+  h2 .n { display: inline-grid; place-items: center; width: 6.2mm; height: 6.2mm; border-radius: 50%; background: var(--accent); color: #fff; font-size: 8.5pt; }
+  h3 { font-size: 9.2pt; margin: 2.4mm 0 .8mm; color: var(--navy); font-weight: 700; }
+  p { margin: 1mm 0; }
+  ul { margin: 1mm 0 1mm 4.5mm; padding: 0; }
+  li { margin: .5mm 0; }
+  b, strong { font-weight: 650; }
+  code, .mono { font-family: "JetBrains Mono", Menlo, monospace; font-size: 7.4pt; }
+  code { background: var(--soft); border: 1px solid var(--line); padding: 0 1.2mm; border-radius: 3px; }
+
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2.6mm; margin: 4mm 0 1mm; }
+  .stat { border: 1px solid var(--line); border-radius: 7px; padding: 2.2mm 2.6mm; background: #fff; border-top: 3px solid var(--accent); }
+  .stat:nth-child(2) { border-top-color: var(--cyan); } .stat:nth-child(3) { border-top-color: var(--green); }
+  .stat:nth-child(4) { border-top-color: var(--violet); } .stat:nth-child(5) { border-top-color: var(--navy); }
+  .stat .v { font-size: 15pt; font-weight: 800; letter-spacing: -.02em; color: var(--navy); line-height: 1.1; }
+  .stat .k { font-size: 7pt; color: var(--muted); line-height: 1.3; margin-top: .5mm; }
+
+  figure { margin: 2mm 0; }
+  figure svg { display: block; width: 100%; height: auto; }
+  figcaption { font-size: 7.2pt; color: var(--muted); margin-top: 1.2mm; }
+  figcaption b { color: var(--ink2); }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 2.5mm 3mm; background: #fff; }
+  .soft { background: var(--soft); border-color: var(--soft); }
+
+  table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 7.6pt; margin: 1.2mm 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  th, td { padding: 1.3mm 2mm; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+  tr:last-child td { border-bottom: 0; }
+  th { background: var(--navy); color: #fff; font-weight: 600; font-size: 7.2pt; letter-spacing: .02em; }
+  tbody tr:nth-child(even) td { background: #fafbfc; }
+  td.ok { color: var(--green); font-weight: 650; white-space: nowrap; }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+  .two-6040 { display: grid; grid-template-columns: 1.15fr 1fr; gap: 5mm; }
+  .chip { display: inline-block; font-size: 6.6pt; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: .3mm 1.6mm; border-radius: 99px; background: var(--accent-soft); color: var(--accent); vertical-align: 1px; }
+  .chip.c { background: var(--cyan-soft); color: var(--cyan); } .chip.g { background: var(--green-soft); color: var(--green); }
+  .eqbox { background: var(--navy); color: #fff; border-radius: 7px; padding: 2.4mm 3.2mm; font-size: 7.8pt; }
+  .eqbox .eq { font-family: Cambria, Georgia, serif; font-style: italic; font-size: 9.5pt; color: #ffd1b3; }
+  .todo { background: #fff2c2; border: 1px dashed #d9a400; color: #7a5b00; border-radius: 3px; padding: 0 1.4mm; font-weight: 600; }
+  .grow { flex: 1; }
+  pre { margin: 1mm 0; background: #0f1b2b; color: #dbe6f2; border-radius: 6px; padding: 2mm 2.6mm; font-family: "JetBrains Mono", Menlo, monospace; font-size: 6.9pt; line-height: 1.45; white-space: pre-wrap; }
+  pre .c { color: #7f93a8; } pre .k { color: #ffb68a; }
+  .legend { display: flex; gap: 4mm; font-size: 7pt; color: var(--muted); margin-top: 1mm; flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 3mm; height: 3mm; border-radius: 2px; vertical-align: -.5mm; margin-right: 1mm; }
+</style>
+</head>
+<body>
+
+<!-- ================================================================ PAGE 1 -->
+<section class="page">
+  <div class="hero">
+    <div class="tag">Namma Space · Techfest 2026-27 · IIT Bombay · Round 1: 3D Reconstruction &amp; Roaming</div>
+    <h1><span>Wayfarer</span>: from a smartphone video<br>to a walkable indoor digital twin</h1>
+    <p class="lead">An end-to-end, one-command pipeline that turns an ordinary phone walkthrough into a photorealistic, metric, gravity-aligned 3D twin you can explore in first person in any browser, with nothing to install.</p>
+    <div class="ids">
+      <div class="idbox"><label>Team name</label><span class="fill"></span></div>
+      <div class="idbox"><label>Team ID</label><span class="fill"></span></div>
+      <div class="idbox"><label>Institute</label><span class="fill"></span></div>
+    </div>
+    <div class="ids" style="grid-template-columns: 1fr; margin-top: 2.5mm;">
+      <div class="idbox"><label>Team members</label><span class="fill"></span></div>
+    </div>
+    <div class="links">
+      <div><b>Code repository</b>github.com/MNNITAK/Wayfarer</div>
+      <div><b>Live web viewer</b><span class="fill"></span></div>
+      <div><b>Demo video</b><span class="fill"></span></div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="v">1 cmd</div><div class="k">video &rarr; web twin, every stage resumable</div></div>
+    <div class="stat"><div class="v">97 %</div><div class="k">frames registered on our home capture (284 / 292, one model)</div></div>
+    <div class="stat"><div class="v">~1 %</div><div class="k">metric scale error with a printed ArUco marker</div></div>
+    <div class="stat"><div class="v">~11&times;</div><div class="k">smaller splat after SOG compression (full SH colour kept)</div></div>
+    <div class="stat"><div class="v">0</div><div class="k">installs or manual 3D modelling for the visitor</div></div>
+  </div>
+
+  <h2><span class="n">1</span>Overview &amp; system architecture</h2>
+  <p>Wayfarer has three parts, one per actor. <b>(1) Capture</b>: a phone-based <b>Capture Coach</b> turns our SOP into live guidance and checks each take before anything heavy runs. <b>(2) Process</b>: a local job server runs the reconstruction pipeline on one GPU PC (or a free Kaggle GPU): blur-aware frame selection, COLMAP Structure-from-Motion, 3D Gaussian Splatting, then our own <b>navigation-grid builder</b>, which levels the model, gives it real-world scale and extracts a walkable occupancy map. <b>(3) Experience</b>: a static web viewer streams the compressed splat and lets anyone roam in first person with true wall collision. The same metric grid drives POIs, search and A* routing for Round 2, and anchors AR navigation in the finale.</p>
+
+  <figure>
+  <svg viewBox="0 0 720 352" font-family="Inter, Helvetica, Arial, sans-serif">
+    <defs>
+      <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#e8702a"/></marker>
+      <marker id="arg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#6a7a8c"/></marker>
+    </defs>
+    <!-- lanes -->
+    <rect x="0" y="0" width="170" height="352" rx="10" fill="#f4f6f9"/>
+    <rect x="182" y="0" width="356" height="352" rx="10" fill="#fff6ef"/>
+    <rect x="550" y="0" width="170" height="352" rx="10" fill="#eef7fb"/>
+    <g font-size="10" font-weight="800" letter-spacing="1.2">
+      <text x="14" y="20" fill="#33445a">① CAPTURE · PHONE</text>
+      <text x="196" y="20" fill="#e8702a">② PROCESS · GPU PC / KAGGLE</text>
+      <text x="564" y="20" fill="#1d8fb3">③ VIEW · BROWSER</text>
+    </g>
+
+    <!-- capture lane -->
+    <g font-size="10">
+      <rect x="12" y="32" width="146" height="74" rx="7" fill="#fff" stroke="#c9d2dc"/>
+      <text x="22" y="49" font-weight="700" font-size="10.5">Capture Coach</text>
+      <text x="22" y="62" fill="#6a7a8c">capture.html (HTTPS on LAN)</text>
+      <text x="22" y="76" fill="#33445a">AI survey &#8594; room plan</text>
+      <text x="22" y="88" fill="#33445a">photo-verified preparation</text>
+      <text x="22" y="100" fill="#33445a">live guide: gyro, blur, light</text>
+
+      <rect x="12" y="116" width="146" height="62" rx="7" fill="#fff" stroke="#c9d2dc"/>
+      <text x="22" y="133" font-weight="700" font-size="10.5">SOP capture</text>
+      <text x="22" y="147" fill="#33445a">1&#215; lens, AE/AF lock, 4K</text>
+      <text x="22" y="159" fill="#33445a">perimeter + wall passes</text>
+      <text x="22" y="171" fill="#33445a">doorway overlap, loop close</text>
+
+      <rect x="12" y="188" width="146" height="50" rx="7" fill="#fff" stroke="#c9d2dc"/>
+      <text x="22" y="205" font-weight="700" font-size="10.5">Scale references</text>
+      <text x="22" y="219" fill="#33445a">printed 15 cm ArUco marker</text>
+      <text x="22" y="231" fill="#33445a">tape-measured ceiling</text>
+
+      <rect x="12" y="248" width="146" height="92" rx="7" fill="#0f2238"/>
+      <text x="22" y="266" font-weight="700" font-size="10.5" fill="#fff">Inputs handed over</text>
+      <text x="22" y="281" fill="#c9d8e6">&#8226; one video, or several</text>
+      <text x="22" y="293" fill="#c9d8e6">  overlapping room clips</text>
+      <text x="22" y="306" fill="#c9d8e6">&#8226; or a photo folder</text>
+      <text x="22" y="319" fill="#c9d8e6">&#8226; or a finished RGB-D scan</text>
+      <text x="22" y="332" fill="#c9d8e6">&#8226; --ceiling 2.75 (metres)</text>
+    </g>
+
+    <!-- process lane -->
+    <g font-size="10">
+      <rect x="194" y="32" width="332" height="40" rx="7" fill="#fff" stroke="#e8702a"/>
+      <text x="204" y="48" font-weight="700" font-size="10.5">Wayfarer Studio + job server</text>
+      <text x="204" y="62" fill="#6a7a8c">upload.html · server.py (stdlib): uploads, sessions, live progress</text>
+
+      <rect x="194" y="80" width="332" height="34" rx="7" fill="#fff" stroke="#e8702a" stroke-dasharray="4 3"/>
+      <text x="204" y="95" font-weight="700" font-size="10.5">preflight.py: quality gate in minutes</text>
+      <text x="204" y="108" fill="#6a7a8c">blur/turn/light stretches · quick COLMAP ≥ 90 % · view angles</text>
+
+      <!-- stages -->
+      <g>
+        <rect x="194" y="124" width="332" height="146" rx="8" fill="#fff" stroke="#e8702a" stroke-width="1.4"/>
+        <text x="204" y="140" font-weight="800" font-size="10.5" fill="#e8702a">wayfarer.py: one-command orchestrator</text>
+        <g font-size="8.6">
+          <rect x="204" y="148" width="58" height="56" rx="6" fill="#f4f6f9"/>
+          <rect x="268" y="148" width="58" height="56" rx="6" fill="#f4f6f9"/>
+          <rect x="332" y="148" width="58" height="56" rx="6" fill="#f4f6f9"/>
+          <rect x="396" y="148" width="58" height="56" rx="6" fill="#f4f6f9"/>
+          <rect x="460" y="148" width="58" height="56" rx="6" fill="#fff1e6" stroke="#e8702a"/>
+          <g text-anchor="middle">
+            <text x="233" y="163" font-weight="700">1 frames</text><text x="233" y="177" fill="#6a7a8c">ffmpeg</text><text x="233" y="189" fill="#6a7a8c">sharpest</text><text x="233" y="200" fill="#6a7a8c">per window</text>
+            <text x="297" y="163" font-weight="700">2 sfm</text><text x="297" y="177" fill="#6a7a8c">COLMAP 4.2</text><text x="297" y="189" fill="#6a7a8c">GPU SIFT</text><text x="297" y="200" fill="#6a7a8c">GLOMAP</text>
+            <text x="361" y="163" font-weight="700">3 train</text><text x="361" y="177" fill="#6a7a8c">3D Gaussian</text><text x="361" y="189" fill="#6a7a8c">splatting</text><text x="361" y="200" fill="#6a7a8c">splatfacto</text>
+            <text x="425" y="163" font-weight="700">4 export</text><text x="425" y="177" fill="#6a7a8c">splat.ply</text><text x="425" y="189" fill="#6a7a8c">+ held-out</text><text x="425" y="200" fill="#6a7a8c">PSNR/SSIM</text>
+            <text x="489" y="163" font-weight="700" fill="#e8702a">5 navgrid</text><text x="489" y="177" fill="#6a7a8c">floor, scale,</text><text x="489" y="189" fill="#6a7a8c">walls, grid,</text><text x="489" y="200" fill="#6a7a8c">SOG</text>
+          </g>
+          <g stroke="#e8702a" stroke-width="1.6" marker-end="url(#ar)"><path d="M262 176h5"/><path d="M326 176h5"/><path d="M390 176h5"/><path d="M454 176h5"/></g>
+        </g>
+        <text x="204" y="222" font-weight="700" font-size="9.5">Post-steps (best effort):</text>
+        <g font-size="9.2" fill="#33445a">
+          <text x="204" y="236">autopoi.py: COCO detector &#8594; 3D POIs · surfaces.py: floor/ceiling fill (LaMa)</text>
+          <text x="204" y="249">depthcarve.py: free-space carving · floorplan.py: vector SVG plan</text>
+          <text x="204" y="262">optional: masks.py (remove people) · airepair.py (Difix view repair)</text>
+        </g>
+      </g>
+
+      <rect x="194" y="280" width="160" height="60" rx="7" fill="#fff" stroke="#c9d2dc"/>
+      <text x="204" y="297" font-weight="700" font-size="10.5">RGB-D fast path</text>
+      <text x="204" y="311" fill="#6a7a8c">import_rgbd.py: mesh + poses</text>
+      <text x="204" y="323" fill="#6a7a8c">+ frames &#8594; twin, no COLMAP</text>
+      <text x="204" y="335" fill="#6a7a8c">kaggle_train.py: free cloud GPU</text>
+
+      <rect x="366" y="280" width="160" height="60" rx="7" fill="#0f2238"/>
+      <text x="376" y="297" font-weight="700" font-size="10.5" fill="#fff">Scene package</text>
+      <text x="376" y="311" fill="#c9d8e6" font-family="JetBrains Mono, Menlo, monospace" font-size="9">scene.sog  (splat)</text>
+      <text x="376" y="323" fill="#c9d8e6" font-family="JetBrains Mono, Menlo, monospace" font-size="9">scene.json (grid,POIs)</text>
+      <text x="376" y="335" fill="#c9d8e6" font-family="JetBrains Mono, Menlo, monospace" font-size="9">floorplan.svg, grid.png</text>
+    </g>
+
+    <!-- experience lane -->
+    <g font-size="10">
+      <rect x="562" y="32" width="146" height="50" rx="7" fill="#fff" stroke="#1d8fb3"/>
+      <text x="572" y="49" font-weight="700" font-size="10.5">Static hosting</text>
+      <text x="572" y="63" fill="#6a7a8c">Vite build on Vercel / CDN</text>
+      <text x="572" y="75" fill="#6a7a8c">?scene=&lt;name&gt;</text>
+
+      <rect x="562" y="92" width="146" height="62" rx="7" fill="#fff" stroke="#1d8fb3"/>
+      <text x="572" y="109" font-weight="700" font-size="10.5">Renderer</text>
+      <text x="572" y="123" fill="#33445a">three.js + Spark splats</text>
+      <text x="572" y="135" fill="#33445a">LoD tree in a worker</text>
+      <text x="572" y="147" fill="#33445a">fixed splat budget/frame</text>
+
+      <rect x="562" y="164" width="146" height="62" rx="7" fill="#fff" stroke="#1d8fb3"/>
+      <text x="572" y="181" font-weight="700" font-size="10.5">First-person roaming</text>
+      <text x="572" y="195" fill="#33445a">WASD + mouse, run, fly</text>
+      <text x="572" y="207" fill="#33445a">grid collision, wall slide</text>
+      <text x="572" y="219" fill="#33445a">touch stick on phones</text>
+
+      <rect x="562" y="236" width="146" height="50" rx="7" fill="#fff" stroke="#1d8fb3"/>
+      <text x="572" y="253" font-weight="700" font-size="10.5">Minimap + blueprint</text>
+      <text x="572" y="267" fill="#33445a">top-down grid, player arrow</text>
+      <text x="572" y="279" fill="#33445a">G: blueprint overlay</text>
+
+      <rect x="562" y="296" width="146" height="44" rx="7" fill="#e6f4f9" stroke="#1d8fb3" stroke-dasharray="4 3"/>
+      <text x="572" y="313" font-weight="700" font-size="10.5" fill="#1d8fb3">Round 2 ready</text>
+      <text x="572" y="327" fill="#33445a">POIs · fuzzy search · A* routes</text>
+    </g>
+
+    <!-- cross-lane arrows -->
+    <g stroke="#e8702a" stroke-width="2" fill="none" marker-end="url(#ar)">
+      <path d="M158 69 C176 69 176 52 192 52"/>
+      <path d="M158 294 C178 294 176 200 192 200"/>
+      <path d="M526 310 C544 310 544 58 560 58"/>
+    </g>
+    <g stroke="#6a7a8c" stroke-width="1.3" fill="none" marker-end="url(#arg)">
+      <path d="M360 72v6"/><path d="M360 114v8"/><path d="M446 270v8"/>
+      <path d="M635 82v8"/><path d="M635 154v8"/><path d="M635 226v8"/><path d="M635 286v8"/>
+    </g>
+    <path d="M194 97 C170 97 170 150 158 150" stroke="#6a7a8c" stroke-width="1.2" fill="none" stroke-dasharray="3 3" marker-end="url(#arg)"/>
+    <text x="176" y="140" font-size="8" fill="#6a7a8c" transform="rotate(-90 176 140)" text-anchor="middle">retakes</text>
+  </svg>
+  <figcaption><b>Figure 1. System architecture.</b> Orange marks our own components; the rest wraps established open-source tools (COLMAP, nerfstudio/gsplat, Spark). Each stage writes its output to disk and is skipped when the output exists (<code>--force &lt;step&gt;</code> re-runs from a step), so a crashed 30-minute job resumes where it stopped.</figcaption>
+  </figure>
+
+  <div class="foot"><span><b>Wayfarer</b> · Technical Abstract · Round 1</span><span>Team ID: ____________</span><span>1 / 5</span></div>
+</section>
+
+<!-- ================================================================ PAGE 2 -->
+<section class="page">
+  <div class="runhead"><span class="brand"><span>Way</span>farer</span><span>Standard Operating Procedure for capture</span></div>
+
+  <h2 style="margin-top:0"><span class="n">2</span>Capture SOP: every rule tied to the failure it prevents</h2>
+  <p>Reconstruction quality is decided at capture time. Our SOP (<code>docs/SOP.md</code>) is written for a non-expert with a phone and states the reason next to each rule. Its numbers come from one source, <code>pipeline/capture_requirements.md</code>, which the Capture Coach and the automatic checks both read.</p>
+
+  <div class="two-6040">
+    <figure style="margin-top:1mm">
+    <svg viewBox="0 0 400 268" font-family="Inter, Helvetica, Arial, sans-serif">
+      <defs>
+        <marker id="pa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#e8702a"/></marker>
+        <marker id="pc" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#1d8fb3"/></marker>
+      </defs>
+      <rect x="0" y="0" width="400" height="268" rx="8" fill="#f4f6f9"/>
+      <!-- walls -->
+      <g stroke="#0f2238" stroke-width="5" fill="none" stroke-linecap="square">
+        <path d="M20 22H380V214H20Z"/>
+      </g>
+      <path d="M210 22V96 M210 140V214" stroke="#0f2238" stroke-width="5"/>
+      <rect x="203" y="97" width="14" height="42" fill="#f4f6f9"/>
+      <!-- furniture -->
+      <rect x="60" y="150" width="70" height="40" rx="4" fill="#d5dde6"/><text x="95" y="174" font-size="9" text-anchor="middle" fill="#6a7a8c">sofa</text>
+      <rect x="280" y="50" width="70" height="56" rx="4" fill="#d5dde6"/><text x="315" y="82" font-size="9" text-anchor="middle" fill="#6a7a8c">bed</text>
+      <!-- perimeter loops -->
+      <path d="M48 52 H180 V186 H48 Z" fill="none" stroke="#e8702a" stroke-width="2" stroke-dasharray="6 4"/>
+      <path d="M240 52 H352 V186 H240 Z" fill="none" stroke="#e8702a" stroke-width="2" stroke-dasharray="6 4"/>
+      <g stroke="#e8702a" stroke-width="2" marker-end="url(#pa)"><path d="M100 52h20"/><path d="M180 110v16"/><path d="M300 186h-20"/><path d="M240 130v-16"/></g>
+      <!-- doorway crossing -->
+      <path d="M182 118 H238" stroke="#1d8fb3" stroke-width="2.4" marker-end="url(#pc)"/>
+      <rect x="180" y="80" width="60" height="13" rx="3" fill="#f4f6f9"/><text x="210" y="90" font-size="8.5" text-anchor="middle" fill="#1d8fb3" font-weight="700">doorway</text>
+      <rect x="172" y="144" width="76" height="13" rx="3" fill="#f4f6f9"/><text x="210" y="154" font-size="8" text-anchor="middle" fill="#1d8fb3">3 s, both rooms</text>
+      <!-- corner sweeps -->
+      <g fill="none" stroke="#6b5bd2" stroke-width="1.6">
+        <path d="M48 52 m0 18 a18 18 0 0 1 18 -18"/><path d="M180 52 m-18 0 a18 18 0 0 1 18 18"/>
+        <path d="M180 186 m0 -18 a18 18 0 0 1 -18 18"/><path d="M48 186 m18 0 a18 18 0 0 1 -18 -18"/>
+        <path d="M240 52 m0 18 a18 18 0 0 1 18 -18"/><path d="M352 52 m-18 0 a18 18 0 0 1 18 18"/>
+        <path d="M352 186 m0 -18 a18 18 0 0 1 -18 18"/><path d="M240 186 m18 0 a18 18 0 0 1 -18 -18"/>
+      </g>
+      <g fill="#6b5bd2"><circle cx="48" cy="52" r="3.5"/><circle cx="180" cy="52" r="3.5"/><circle cx="180" cy="186" r="3.5"/><circle cx="48" cy="186" r="3.5"/><circle cx="240" cy="52" r="3.5"/><circle cx="352" cy="52" r="3.5"/><circle cx="352" cy="186" r="3.5"/><circle cx="240" cy="186" r="3.5"/></g>
+      <!-- camera direction ticks (facing in) -->
+      <g stroke="#33445a" stroke-width="1.3" marker-end="url(#pa)" opacity=".55"><path d="M80 52v14"/><path d="M150 186v-14"/><path d="M48 120h14"/><path d="M300 52v14"/><path d="M352 140h-14"/></g>
+      <!-- marker -->
+      <rect x="22" y="94" width="12" height="12" fill="#0f2238"/><rect x="25" y="97" width="6" height="6" fill="#fff"/><rect x="27" y="99" width="2" height="2" fill="#0f2238"/>
+      <text x="38" y="92" font-size="8.5" fill="#0f2238" font-weight="700">ArUco</text>
+      <!-- start -->
+      <path d="M48 52 l-11 -11" stroke="#2f9e6b" stroke-width="1.5"/><circle cx="34" cy="38" r="6" fill="#2f9e6b"/><text x="34" y="41" font-size="7.5" text-anchor="middle" fill="#fff" font-weight="800">S</text>
+      <!-- legend -->
+      <g font-size="8.6" fill="#33445a">
+        <path d="M22 232h22" stroke="#e8702a" stroke-width="2" stroke-dasharray="6 4"/><text x="49" y="235">perimeter loop, 0.5–1 m off walls, facing in, ≤ 0.5 m/s</text>
+        <circle cx="33" cy="250" r="3.5" fill="#6b5bd2"/><text x="49" y="253">corner stop: 2 s + 90° sweep</text>
+        <circle cx="236" cy="250" r="5" fill="#2f9e6b"/><text x="246" y="253">start = finish (loop closure)</text>
+      </g>
+    </svg>
+    <figcaption><b>Figure 2. Capture path (top view).</b> Each room gets a perimeter loop, corner sweeps, one ceiling sweep and along-the-wall passes. Rooms are tied together by walking slowly through doorways.</figcaption>
+    </figure>
+
+    <div>
+      <table>
+        <thead><tr><th>SOP rule</th><th>Failure it prevents</th></tr></thead>
+        <tbody>
+        <tr><td><b>1&#215; main lens</b>, landscape, AE/AF lock, HDR/night off</td><td>Lens distortion; brightness pumping that breaks photometric consistency</td></tr>
+        <tr><td>Walk ≤ 0.5 m/s, turn ≤ 30°/s, chest height ~1.4 m</td><td>Motion blur, too little parallax for SfM</td></tr>
+        <tr><td>Tilt 10–15° down; one ceiling sweep per room</td><td>No floor/ceiling evidence, which leveling and scale need</td></tr>
+        <tr><td><b>Along-the-wall pass</b>, 30–45° to the wall</td><td>Walls seen only head-on turn fibrous when you walk along them</td></tr>
+        <tr><td>Never film a blank wall from &lt; 1 m</td><td>No features &#8594; lost tracking</td></tr>
+        <tr><td>Fans off, mirrors/screens covered, doors open</td><td>Floaters; "phantom rooms" behind reflections</td></tr>
+        <tr><td>Doorway overlap 3 s; end where you started</td><td>Rooms that fail to stitch; drift</td></tr>
+        <tr><td><b>15 cm ArUco marker</b> from 3+ angles; tape the ceiling</td><td>Scale ambiguity of monocular SfM</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:7.6pt"><b>Two modes:</b> one long take (homes, ≤ ~8 min) or room-by-room clips that start and end in a doorway. Frames from all clips are matched together, so the clips register into one model <b>without manual stitching</b>.</p>
+    </div>
+  </div>
+
+  <h3>2.1 Capture Coach: the SOP as an assistant, and a gate before the long build</h3>
+  <p>A bad take used to show up only after a 30-minute build. The Coach (<code>capture.html</code>, opened on the phone) keeps the user in a loop until the capture meets the pipeline's needs.</p>
+  <figure>
+  <svg viewBox="0 0 720 120" font-family="Inter, Helvetica, Arial, sans-serif">
+    <defs><marker id="ca" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#e8702a"/></marker></defs>
+    <g font-size="9.6">
+      <rect x="0" y="6" width="128" height="80" rx="9" fill="#efedfb"/>
+      <text x="12" y="25" font-weight="800" fill="#6b5bd2" font-size="11">1 · Survey</text>
+      <text x="12" y="41" fill="#33445a">8–15 photos; a local</text><text x="12" y="54" fill="#33445a">vision model writes a</text><text x="12" y="67" fill="#33445a">plan for this room</text><text x="12" y="80" fill="#6a7a8c" font-size="8.5">optional · AI</text>
+
+      <rect x="148" y="6" width="128" height="80" rx="9" fill="#efedfb"/>
+      <text x="160" y="25" font-weight="800" fill="#6b5bd2" font-size="11">2 · Prepare</text>
+      <text x="160" y="41" fill="#33445a">fan off, mirror covered,</text><text x="160" y="54" fill="#33445a">marker placed: each fix</text><text x="160" y="67" fill="#33445a">photo-verified by AI</text><text x="160" y="80" fill="#6a7a8c" font-size="8.5">unlocks recording</text>
+
+      <rect x="296" y="6" width="128" height="80" rx="9" fill="#e6f4f9"/>
+      <text x="308" y="25" font-weight="800" fill="#1d8fb3" font-size="11">3 · Record</text>
+      <text x="308" y="41" fill="#33445a">live: turn speed (gyro),</text><text x="308" y="54" fill="#33445a">blur, light, blank wall,</text><text x="308" y="67" fill="#33445a">tilt, coverage ring</text><text x="308" y="80" fill="#6a7a8c" font-size="8.5">route as step cards</text>
+
+      <rect x="444" y="6" width="128" height="80" rx="9" fill="#fff1e6"/>
+      <text x="456" y="25" font-weight="800" fill="#e8702a" font-size="11">4 · Review</text>
+      <text x="456" y="41" fill="#33445a">preflight.py: stretches</text><text x="456" y="54" fill="#33445a">with timestamps, quick</text><text x="456" y="67" fill="#33445a">COLMAP, view angles</text><text x="456" y="80" fill="#6a7a8c" font-size="8.5">minutes, not hours</text>
+
+      <rect x="592" y="6" width="128" height="80" rx="9" fill="#0f2238"/>
+      <text x="604" y="25" font-weight="800" fill="#fff" font-size="11">5 · Build twin</text>
+      <text x="604" y="41" fill="#c9d8e6">all gates passed &#8594;</text><text x="604" y="54" fill="#c9d8e6">full pipeline starts,</text><text x="604" y="67" fill="#c9d8e6">live progress, then</text><text x="604" y="80" fill="#ffb68a">"Open twin"</text>
+    </g>
+    <g stroke="#e8702a" stroke-width="2" marker-end="url(#ca)"><path d="M128 46h18"/><path d="M276 46h18"/><path d="M424 46h18"/><path d="M572 46h18"/></g>
+    <path d="M508 86 C508 112 360 112 360 90" fill="none" stroke="#e8702a" stroke-width="1.6" stroke-dasharray="5 3" marker-end="url(#ca)"/>
+    <text x="434" y="113" font-size="9" fill="#e8702a" text-anchor="middle" font-weight="600">fail &#8594; short retake clips, not a full re-shoot</text>
+  </svg>
+  <figcaption><b>Figure 3. Capture Coach loop.</b> The AI steps run on a free local vision model (Ollama, <code>qwen2.5vl:7b</code>), so photos never leave the PC; the Claude API is optional. Without either, steps 3–5 still run.</figcaption>
+  </figure>
+
+  <h3>2.2 Quality gates (automatic, with the numbers the checks use)</h3>
+  <table style="font-size:7.2pt">
+    <thead><tr><th>Check</th><th>Threshold</th><th>Runs in</th><th>If it fails</th></tr></thead>
+    <tbody>
+    <tr><td>Motion blur</td><td>sharpness &lt; 0.55&#215; best frame within ±2 s</td><td>guide · preflight · picker</td><td>walk slower, more light</td></tr>
+    <tr><td>Turn / exposure</td><td>&gt; 30°/s · grey jump &gt; 18 in 1/8 s</td><td>guide (gyro) · preflight</td><td>retake that stretch</td></tr>
+    <tr><td>Dark / blank wall</td><td>grey &lt; 35 · gradient &lt; 1.5 levels/px</td><td>guide · preflight</td><td>lights on, keep an edge in view</td></tr>
+    <tr><td>Camera poses</td><td>≥ 90 % in one model · build stops &lt; 50 %</td><td>preflight · <code>step_sfm</code></td><td>more doorway overlap</td></tr>
+    <tr><td>View angles</td><td>median ray spread ≥ 15° per plan cell</td><td>preflight</td><td>along-the-wall retake</td></tr>
+    <tr><td>Scale cross-check</td><td>marker / ceiling / camera within 12 %</td><td><code>navgrid.py</code></td><td>re-film marker, re-measure</td></tr>
+    </tbody>
+  </table>
+
+  <div class="foot"><span><b>Wayfarer</b> · Technical Abstract · Round 1</span><span>Team ID: ____________</span><span>2 / 5</span></div>
+</section>
+
+<!-- ================================================================ PAGE 3 -->
+<section class="page">
+  <div class="runhead"><span class="brand"><span>Way</span>farer</span><span>Reconstruction pipeline</span></div>
+
+  <h2 style="margin-top:0"><span class="n">3</span>Reconstruction pipeline: video to photoreal 3D</h2>
+  <figure>
+  <svg viewBox="0 0 720 196" font-family="Inter, Helvetica, Arial, sans-serif">
+    <defs><marker id="sa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#e8702a"/></marker></defs>
+    <g font-size="9.3">
+      <!-- column template -->
+      <g>
+        <rect x="0" y="0" width="134" height="196" rx="9" fill="#f4f6f9"/>
+        <rect x="0" y="0" width="134" height="30" rx="9" fill="#33445a"/><rect x="0" y="20" width="134" height="10" fill="#33445a"/>
+        <text x="10" y="19" fill="#fff" font-weight="800" font-size="10.5">1 · Frame picker</text>
+        <text x="10" y="46" font-weight="700" fill="#0f1b2b">ffmpeg · NumPy</text>
+        <text x="10" y="62" fill="#33445a">8 fps candidates,</text><text x="10" y="74" fill="#33445a">1280 px (1600 high)</text>
+        <text x="10" y="88" fill="#33445a">Laplacian variance on</text><text x="10" y="100" fill="#33445a">480 px grey thumbnail</text>
+        <text x="10" y="114" fill="#33445a">sharpest per window,</text><text x="10" y="126" fill="#33445a">≥ 0.55&#215; local best</text>
+        <line x1="10" x2="124" y1="140" y2="140" stroke="#dfe4ea"/>
+        <text x="10" y="156" fill="#6a7a8c" font-size="8.6">OUT</text><text x="10" y="170" fill="#0f1b2b">≤ 500 evenly spread,</text><text x="10" y="182" fill="#0f1b2b">sharp frames</text>
+      </g>
+      <g transform="translate(146 0)">
+        <rect x="0" y="0" width="134" height="196" rx="9" fill="#f4f6f9"/>
+        <rect x="0" y="0" width="134" height="30" rx="9" fill="#33445a"/><rect x="0" y="20" width="134" height="10" fill="#33445a"/>
+        <text x="10" y="19" fill="#fff" font-weight="800" font-size="10.5">2 · Camera poses</text>
+        <text x="10" y="46" font-weight="700" fill="#0f1b2b">COLMAP 4.2 (direct)</text>
+        <text x="10" y="62" fill="#33445a">GPU SIFT, 8,192 feat.,</text><text x="10" y="74" fill="#33445a">one shared OPENCV cam</text>
+        <text x="10" y="88" fill="#33445a">exhaustive ≤ 150 frames,</text><text x="10" y="100" fill="#33445a">else sequential + loops</text>
+        <text x="10" y="114" fill="#33445a">global mapper (GLOMAP),</text><text x="10" y="126" fill="#33445a">stray cameras dropped</text>
+        <line x1="10" x2="124" y1="140" y2="140" stroke="#dfe4ea"/>
+        <text x="10" y="156" fill="#6a7a8c" font-size="8.6">GATE / OUT</text><text x="10" y="170" fill="#0f1b2b">largest model; &lt; 50 %</text><text x="10" y="182" fill="#0f1b2b">registered stops run</text>
+      </g>
+      <g transform="translate(292 0)">
+        <rect x="0" y="0" width="134" height="196" rx="9" fill="#f4f6f9"/>
+        <rect x="0" y="0" width="134" height="30" rx="9" fill="#33445a"/><rect x="0" y="20" width="134" height="10" fill="#33445a"/>
+        <text x="10" y="19" fill="#fff" font-weight="800" font-size="10.5">3 · Gaussian splat</text>
+        <text x="10" y="46" font-weight="700" fill="#0f1b2b">nerfstudio splatfacto</text>
+        <text x="10" y="62" fill="#33445a">30k iters (7k fast …</text><text x="10" y="74" fill="#33445a">50k max), 8 GB GPU</text>
+        <text x="10" y="88" fill="#33445a">bilateral grid: exposure</text><text x="10" y="100" fill="#33445a">+ white balance per view</text>
+        <text x="10" y="114" fill="#33445a">scale regularisation,</text><text x="10" y="126" fill="#33445a">SO3&#215;R3 pose refinement</text>
+        <line x1="10" x2="124" y1="140" y2="140" stroke="#dfe4ea"/>
+        <text x="10" y="156" fill="#6a7a8c" font-size="8.6">OUT</text><text x="10" y="170" fill="#0f1b2b">millions of anisotropic</text><text x="10" y="182" fill="#0f1b2b">Gaussians, SH colour</text>
+      </g>
+      <g transform="translate(438 0)">
+        <rect x="0" y="0" width="134" height="196" rx="9" fill="#f4f6f9"/>
+        <rect x="0" y="0" width="134" height="30" rx="9" fill="#33445a"/><rect x="0" y="20" width="134" height="10" fill="#33445a"/>
+        <text x="10" y="19" fill="#fff" font-weight="800" font-size="10.5">4 · Export + score</text>
+        <text x="10" y="46" font-weight="700" fill="#0f1b2b">ns-export · ns-eval</text>
+        <text x="10" y="62" fill="#33445a">splat.ply in the</text><text x="10" y="74" fill="#33445a">training frame</text>
+        <text x="10" y="88" fill="#33445a">PSNR / SSIM / LPIPS on</text><text x="10" y="100" fill="#33445a">10 % held-out views</text>
+        <text x="10" y="114" fill="#33445a">numbers ship with the</text><text x="10" y="126" fill="#33445a">scene (scene.json stats)</text>
+        <line x1="10" x2="124" y1="140" y2="140" stroke="#dfe4ea"/>
+        <text x="10" y="156" fill="#6a7a8c" font-size="8.6">OUT</text><text x="10" y="170" fill="#0f1b2b">measured, not guessed,</text><text x="10" y="182" fill="#0f1b2b">visual fidelity</text>
+      </g>
+      <g transform="translate(584 0)">
+        <rect x="0" y="0" width="136" height="196" rx="9" fill="#fff1e6" stroke="#e8702a"/>
+        <rect x="0" y="0" width="136" height="30" rx="9" fill="#e8702a"/><rect x="0" y="20" width="136" height="10" fill="#e8702a"/>
+        <text x="10" y="19" fill="#fff" font-weight="800" font-size="10.5">5 · Navgrid (ours)</text>
+        <text x="10" y="46" font-weight="700" fill="#0f1b2b">navgrid.py · §4</text>
+        <text x="10" y="62" fill="#33445a">level the floor, metric</text><text x="10" y="74" fill="#33445a">scale, Manhattan yaw</text>
+        <text x="10" y="88" fill="#33445a">walls / furniture /</text><text x="10" y="100" fill="#33445a">walkable at 10 cm</text>
+        <text x="10" y="114" fill="#33445a">SOG compression for</text><text x="10" y="126" fill="#33445a">the web (~11&#215;)</text>
+        <line x1="10" x2="126" y1="140" y2="140" stroke="#f3c8aa"/>
+        <text x="10" y="156" fill="#6a7a8c" font-size="8.6">OUT</text><text x="10" y="170" fill="#0f1b2b">scene.sog +</text><text x="10" y="182" fill="#0f1b2b">scene.json</text>
+      </g>
+    </g>
+    <g stroke="#e8702a" stroke-width="2" marker-end="url(#sa)"><path d="M134 98h10"/><path d="M280 98h10"/><path d="M426 98h10"/><path d="M572 98h10"/></g>
+  </svg>
+  <figcaption><b>Figure 4. Pipeline stages</b> (<code>python pipeline/wayfarer.py walk.mp4 --name home --ceiling 2.75</code>). Capture statistics and timings are written to <code>stats.json</code> and travel with the twin.</figcaption>
+  </figure>
+
+  <div class="two">
+    <div>
+      <h3>3.1 Blur-aware frame selection</h3>
+      <p>Video is sampled at 8 fps and thinned to at most 500 frames by keeping the sharpest frame in each window (variance of the Laplacian). A frame is rejected only if it falls below <b>0.55&#215; the sharpest frame within ±2 s</b>, not below a global median: a plain wall is naturally low-contrast yet sharp, while motion blur is low <i>relative to its neighbours</i>. Photo folders keep every photo.</p>
+
+      <h3>3.2 Structure-from-Motion</h3>
+      <p>We drive COLMAP directly, not through nerfstudio's wrapper, which turns loop detection off and only reads <code>sparse/0</code>; a multi-room walk could then drift or silently lose rooms. Short captures use <b>exhaustive matching</b>, so every revisit closes a loop. Longer ones use sequential matching (overlap 20, quadratic) plus vocabulary-tree loop closure, which is O(n). Mapping uses COLMAP 4.2's <b>global mapper (GLOMAP)</b>, which solves all cameras at once. On our home capture it registered <b>284 / 292 frames in one model at 0.67 px reprojection error in 6.5 min</b>, against 282 frames split into two models in 17 min with incremental mapping. Cameras the mapper placed implausibly far away (&gt; 10&#215; the median distance) are deleted; otherwise they squash the real poses and fill the room with fog. Matches are cached by a hash of the frame list, so an interrupted run resumes.</p>
+    </div>
+    <div>
+      <h3>3.3 3D Gaussian Splatting</h3>
+      <p>Splats were chosen over meshes and NeRFs because they render <b>photoreal, view-dependent appearance in real time in WebGL</b>, and they hold up on thin and glossy structures (chair legs, plants, tiles) where photogrammetry meshes melt. We train <code>splatfacto</code> (gsplat CUDA kernels), initialised from the SfM points, with settings that fit a multi-room scene in <b>8 GB</b>: images cached on the CPU as uint8, a per-image <b>bilateral grid</b> that absorbs exposure and white-balance shifts between rooms, scale regularisation against needle splats, and SO3&#215;R3 camera refinement. Interrupted runs resume from the last checkpoint. An MCMC trainer (<code>train_mcmc.py</code>) with a hard Gaussian cap is kept as a memory-safe fallback for very large venues.</p>
+
+      <h3>3.4 Making the twin complete and clean</h3>
+      <ul>
+        <li><b>Floor &amp; ceiling fill</b> (<code>surfaces.py</code>): chest-height footage barely sees these planes. We project real pixels from the frames onto the known planes at 2 cm per texel, occlusion-checked against rendered depth, and use LaMa inpainting only for what no frame saw.</li>
+        <li><b>People removal</b> (<code>--mask-people</code>): masked pixels are ignored by both COLMAP and training, so other frames supply the real background with no ghosts.</li>
+        <li><b>AI view repair</b> (<code>--ai-repair</code>, Difix3D+ approach): novel views are rendered, repaired by a one-step diffusion model, and fine-tuned back into the 3D.</li>
+        <li><b>RGB-D fast path</b> (<code>import_rgbd.py</code>): a finished scan (mesh + metric poses + frames) becomes a twin in about a minute with no GPU; <code>kaggle_train.py</code> trains the photoreal splat on a free Kaggle GPU.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="foot"><span><b>Wayfarer</b> · Technical Abstract · Round 1</span><span>Team ID: ____________</span><span>3 / 5</span></div>
+</section>
+
+<!-- ================================================================ PAGE 4 -->
+<section class="page">
+  <div class="runhead"><span class="brand"><span>Way</span>farer</span><span>Navigation-grid builder &amp; web viewer</span></div>
+
+  <h2 style="margin-top:0"><span class="n">4</span>Navigation-grid builder (our core contribution)</h2>
+  <p>A trained splat is just a cloud of coloured ellipsoids in an arbitrary SfM frame: it has no floor, no scale and no notion of what is solid. <code>navgrid.py</code> turns it into a <b>level, metric, walkable map</b>.</p>
+
+  <figure>
+  <svg viewBox="0 0 720 176" font-family="Inter, Helvetica, Arial, sans-serif">
+    <defs><marker id="na" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#e8702a"/></marker></defs>
+    <g font-size="9.3">
+      <!-- panel 1: raw tilted cloud -->
+      <rect x="0" y="0" width="110" height="176" rx="8" fill="#f4f6f9"/>
+      <g transform="translate(55 62) rotate(-14)">
+        <g fill="#8aa1b8" opacity=".85">
+          <circle cx="-34" cy="18" r="2"/><circle cx="-24" cy="20" r="2"/><circle cx="-12" cy="19" r="2"/><circle cx="0" cy="21" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="24" cy="20" r="2"/><circle cx="34" cy="18" r="2"/>
+          <circle cx="-34" cy="-2" r="2"/><circle cx="-34" cy="-18" r="2"/><circle cx="34" cy="-4" r="2"/><circle cx="34" cy="-20" r="2"/><circle cx="-6" cy="4" r="2"/><circle cx="6" cy="6" r="2"/>
+        </g>
+        <circle cx="-14" cy="-26" r="3.2" fill="#e8702a" opacity=".6"/><circle cx="18" cy="-30" r="2.6" fill="#e8702a" opacity=".6"/>
+      </g>
+      <text x="10" y="118" font-weight="800" font-size="10">a · Filter</text>
+      <text x="10" y="132" fill="#33445a">drop opacity &lt; 0.3</text><text x="10" y="144" fill="#33445a">and top 2 % by size</text>
+      <text x="10" y="158" fill="#e8702a">(floaters, orange)</text>
+
+      <!-- panel 2: floor -->
+      <rect x="122" y="0" width="110" height="176" rx="8" fill="#f4f6f9"/>
+      <path d="M134 82 L220 82" stroke="#2f9e6b" stroke-width="3"/>
+      <g fill="#8aa1b8"><circle cx="140" cy="80" r="2"/><circle cx="152" cy="81" r="2"/><circle cx="164" cy="80" r="2"/><circle cx="176" cy="81" r="2"/><circle cx="188" cy="80" r="2"/><circle cx="200" cy="81" r="2"/><circle cx="212" cy="80" r="2"/><circle cx="140" cy="60" r="2"/><circle cx="140" cy="44" r="2"/><circle cx="212" cy="58" r="2"/><circle cx="212" cy="42" r="2"/><circle cx="176" cy="70" r="2"/></g>
+      <path d="M177 76 v-34" stroke="#2f9e6b" stroke-width="1.6" marker-end="url(#na)"/><text x="182" y="44" fill="#2f9e6b" font-weight="700">+Y</text>
+      <text x="132" y="118" font-weight="800" font-size="10">b · Level</text>
+      <text x="132" y="132" fill="#33445a">RANSAC floor on the</text><text x="132" y="144" fill="#33445a">lowest dense layer,</text><text x="132" y="158" fill="#33445a">tilt ≤ 25°, LSQ refine</text>
+
+      <!-- panel 3: scale -->
+      <rect x="244" y="0" width="110" height="176" rx="8" fill="#f4f6f9"/>
+      <rect x="258" y="30" width="22" height="22" fill="#0f2238"/><rect x="263" y="35" width="12" height="12" fill="#fff"/><rect x="266" y="38" width="6" height="6" fill="#0f2238"/>
+      <path d="M296 26 v62 M292 26h8 M292 88h8" stroke="#1d8fb3" stroke-width="1.6"/><text x="302" y="60" fill="#1d8fb3" font-weight="700">H</text>
+      <circle cx="330" cy="58" r="5" fill="#6b5bd2"/><path d="M330 63 v25" stroke="#6b5bd2" stroke-width="1.6"/><text x="320" y="100" fill="#6b5bd2" font-size="8.5">1.4 m</text>
+      <text x="254" y="118" font-weight="800" font-size="10">c · Metric scale</text>
+      <text x="254" y="132" fill="#33445a">marker · ceiling ·</text><text x="254" y="144" fill="#33445a">camera height, cross-</text><text x="254" y="158" fill="#33445a">checked (12 % flag)</text>
+
+      <!-- panel 4: manhattan -->
+      <rect x="366" y="0" width="110" height="176" rx="8" fill="#f4f6f9"/>
+      <g fill="#c9d2dc"><rect x="378" y="78" width="6" height="8"/><rect x="386" y="74" width="6" height="12"/><rect x="394" y="30" width="6" height="56" fill="#e8702a"/><rect x="402" y="72" width="6" height="14"/><rect x="410" y="76" width="6" height="10"/><rect x="418" y="70" width="6" height="16"/><rect x="426" y="36" width="6" height="50" fill="#e8702a"/><rect x="434" y="74" width="6" height="12"/><rect x="442" y="78" width="6" height="8"/><rect x="450" y="76" width="6" height="10"/></g>
+      <line x1="376" x2="466" y1="86" y2="86" stroke="#33445a"/>
+      <text x="376" y="100" fill="#6a7a8c" font-size="8.5">wall-point histogram</text>
+      <text x="376" y="118" font-weight="800" font-size="10">d · Align walls</text>
+      <text x="376" y="132" fill="#33445a">yaw θ ∈ [0°, 90°) that</text><text x="376" y="144" fill="#33445a">maximises Σ p² of x/z</text><text x="376" y="158" fill="#33445a">histograms (peaky)</text>
+
+      <!-- panel 5: slice -->
+      <rect x="488" y="0" width="110" height="176" rx="8" fill="#f4f6f9"/>
+      <rect x="500" y="40" width="86" height="40" fill="#fff1e6"/>
+      <line x1="500" x2="586" y1="80" y2="80" stroke="#e8702a" stroke-dasharray="3 2"/><line x1="500" x2="586" y1="40" y2="40" stroke="#e8702a" stroke-dasharray="3 2"/>
+      <line x1="500" x2="586" y1="88" y2="88" stroke="#0f2238" stroke-width="2"/>
+      <rect x="508" y="20" width="8" height="68" fill="#0f2238"/><rect x="540" y="66" width="30" height="22" fill="#8aa1b8"/>
+      <text x="520" y="36" font-size="8" fill="#e8702a">1.9 m</text><text x="572" y="78" font-size="8" fill="#e8702a">0.12</text>
+      <text x="498" y="118" font-weight="800" font-size="10">e · Slice + carve</text>
+      <text x="498" y="132" fill="#33445a">obstacle band 0.12–1.9 m;</text><text x="498" y="144" fill="#33445a">&gt; 1.2 m = wall, else</text><text x="498" y="158" fill="#33445a">furniture; depth carving</text>
+
+      <!-- panel 6: grid -->
+      <rect x="610" y="0" width="110" height="176" rx="8" fill="#fff1e6" stroke="#e8702a"/>
+      <g transform="translate(622 14)">
+        <rect width="86" height="80" fill="#fff"/>
+        <g fill="#e3f3ea"><rect x="6" y="6" width="34" height="68"/><rect x="46" y="6" width="34" height="68"/><rect x="40" y="30" width="6" height="14"/></g>
+        <g fill="#0f2238"><rect x="0" y="0" width="86" height="6"/><rect x="0" y="74" width="86" height="6"/><rect x="0" y="0" width="6" height="80"/><rect x="80" y="0" width="6" height="80"/><rect x="40" y="0" width="6" height="30"/><rect x="40" y="44" width="6" height="36"/></g>
+        <g fill="#8aa1b8"><rect x="12" y="52" width="18" height="12"/><rect x="58" y="12" width="16" height="18"/></g>
+        <path d="M22 20 L22 37 L60 37 L60 60" stroke="#e8702a" stroke-width="2" fill="none" stroke-dasharray="3 2"/>
+      </g>
+      <text x="620" y="118" font-weight="800" font-size="10" fill="#e8702a">f · Walkable grid</text>
+      <text x="620" y="132" fill="#33445a">camera path forced</text><text x="620" y="144" fill="#33445a">walkable; keep floor</text><text x="620" y="158" fill="#33445a">connected to it</text>
+    </g>
+    <g stroke="#e8702a" stroke-width="1.8" marker-end="url(#na)"><path d="M110 60h10"/><path d="M232 60h10"/><path d="M354 60h10"/><path d="M476 60h10"/><path d="M598 60h10"/></g>
+  </svg>
+  <figcaption><b>Figure 5. From splat cloud to navigation grid.</b> Output cells: <code>.</code> walkable, <code>#</code> wall, <code>o</code> furniture, blank = unknown, 10 cm resolution.</figcaption>
+  </figure>
+
+  <div class="two-6040">
+    <div>
+      <ul>
+        <li><b>Floor</b>: RANSAC over the lowest dense layer (not simply the largest plane, which is often a wall or table top), with normals within 25° of the up hint, then refined to the smallest-eigenvalue axis of the inliers. The scene is rotated so the floor normal is +Y and the floor sits at y = 0. If the up hint is 90° off (ceiling-heavy footage), the camera path still recovers the floor.</li>
+        <li><b>Obstacles</b>: splats between 0.12 m and 1.9 m, weighted by opacity, are binned into 10 cm cells with a density-adaptive threshold. Blobs under 0.03 m² are dropped as floaters.</li>
+        <li><b>Free-space carving</b> (<code>depthcarve.py</code>): expected depth is rendered from the training cameras and each ray is marched through 10 cm voxels in the obstacle band. Voxels that rays passed <i>through</i> far more often than they stopped in are floaters and get cleared; ray endpoints add surfaces. Working per voxel matters: a ray passing above a bed says nothing about the bed.</li>
+        <li><b>Walkability</b>: floor evidence is closed morphologically. Cells the <b>camera physically walked through</b> are always walkable (so doorways stay open), and only floor connected to that path is kept, which removes "rooms" seen through windows and mirrors.</li>
+      </ul>
+    </div>
+    <div>
+      <div class="eqbox">
+        <div style="font-weight:700; margin-bottom:1mm">Three independent scale estimates</div>
+        <div class="eq">s<sub>m</sub> = 0.15 m / ‖ corner<sub>i</sub> − corner<sub>j</sub> ‖</div>
+        <div style="font-size:7pt; color:#c9d8e6; margin-bottom:1.2mm">ArUco corners triangulated (DLT) from the COLMAP poses; needs 3+ views with sides agreeing within 5 %</div>
+        <div class="eq">s<sub>c</sub> = H<sub>tape</sub> / d(floor, ceiling)</div>
+        <div style="font-size:7pt; color:#c9d8e6; margin-bottom:1.2mm">ceiling = second RANSAC above every camera</div>
+        <div class="eq">s<sub>h</sub> = 1.4 m / median camera height</div>
+        <div style="font-size:7pt; color:#c9d8e6">Priority: marker &gt; ceiling &gt; camera; any estimate &gt; 12 % off is flagged</div>
+      </div>
+      <p style="font-size:7.6pt; margin-top:2mm"><b>Web export</b>: PlayCanvas <i>splat-transform</i> removes NaN Gaussians and compresses to <b>SOG</b> (k-means-quantised attributes in lossless WebP, about 10 bytes per splat including all SH bands): a 90 MB PLY became 8 MB. The alignment is stored as a TRS transform in <code>scene.json</code>, so the splat is never resampled, and the grid is plain text that can be fixed in any editor.</p>
+    </div>
+  </div>
+
+  <h2><span class="n">5</span>Zero-install web viewer</h2>
+  <div class="two-6040">
+    <figure style="margin:0">
+    <svg viewBox="0 0 400 168" font-family="Inter, Helvetica, Arial, sans-serif">
+      <defs><marker id="va" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#1d8fb3"/></marker></defs>
+      <rect x="0" y="0" width="400" height="168" rx="8" fill="#eef7fb"/>
+      <g font-size="9.2">
+        <rect x="10" y="10" width="92" height="40" rx="6" fill="#0f2238"/><text x="20" y="27" fill="#fff" font-weight="700">scene.json</text><text x="20" y="40" fill="#c9d8e6">scene.sog (CDN)</text>
+        <rect x="128" y="10" width="140" height="40" rx="6" fill="#fff" stroke="#1d8fb3"/><text x="138" y="27" font-weight="700">main.js</text><text x="138" y="40" fill="#6a7a8c">load, UI, POIs, search, HUD</text>
+        <rect x="294" y="10" width="96" height="40" rx="6" fill="#fff" stroke="#1d8fb3"/><text x="304" y="27" font-weight="700">Spark</text><text x="304" y="40" fill="#6a7a8c">SplatMesh, LoD</text>
+
+        <rect x="10" y="74" width="120" height="44" rx="6" fill="#fff" stroke="#1d8fb3"/><text x="20" y="91" font-weight="700">player.js</text><text x="20" y="104" fill="#6a7a8c">pointer lock / touch,</text><text x="20" y="114" fill="#6a7a8c">22 cm body collision</text>
+        <rect x="140" y="74" width="120" height="44" rx="6" fill="#fff" stroke="#1d8fb3"/><text x="150" y="91" font-weight="700">nav.js (pure)</text><text x="150" y="104" fill="#6a7a8c">grid, inflate, A*,</text><text x="150" y="114" fill="#6a7a8c">smoothing, turn hints</text>
+        <rect x="270" y="74" width="120" height="44" rx="6" fill="#fff" stroke="#1d8fb3"/><text x="280" y="91" font-weight="700">minimap.js</text><text x="280" y="104" fill="#6a7a8c">grid baked once to an</text><text x="280" y="114" fill="#6a7a8c">offscreen canvas</text>
+
+        <rect x="10" y="132" width="380" height="26" rx="6" fill="#1d8fb3"/>
+        <text x="200" y="149" fill="#fff" text-anchor="middle" font-weight="600">each frame: input &#8594; collide on grid &#8594; camera &#8594; Spark (fixed budget) &#8594; labels</text>
+      </g>
+      <g stroke="#1d8fb3" stroke-width="1.5" marker-end="url(#va)" fill="none">
+        <path d="M102 30h24"/><path d="M268 30h24"/><path d="M160 50 L80 72"/><path d="M198 50v22"/><path d="M236 50 L320 72"/>
+      </g>
+    </svg>
+    <figcaption><b>Figure 6. Viewer modules.</b> Static Vite build: an HTML page plus two data files, so any CDN can serve it.</figcaption>
+    </figure>
+    <div>
+      <ul>
+        <li><b>Smooth on ordinary GPUs</b>: Spark builds a level-of-detail tree in a worker, so each frame draws a <b>fixed splat budget</b> whatever the scene size. Splats are clipped at √5σ instead of √8σ to save fill rate, the full-detail cone is widened to 130° so screen edges stay sharp, pixel ratio is capped (lower on phones), and labels are DOM overlays with no extra draw calls.</li>
+        <li><b>Game-like movement</b>: WASD with exponential acceleration and damping, Shift to run, slight head-bob, <code>F</code> fly mode for a dollhouse view. Movement is resolved per axis, so you <b>slide along walls</b> instead of sticking.</li>
+        <li><b>Works without a splat</b>: the grid is extruded into a blueprint, so a scene can be checked before training ends.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="foot"><span><b>Wayfarer</b> · Technical Abstract · Round 1</span><span>Team ID: ____________</span><span>4 / 5</span></div>
+</section>
+
+<!-- ================================================================ PAGE 5 -->
+<section class="page">
+  <div class="runhead"><span class="brand"><span>Way</span>farer</span><span>Validation, roadmap, reproduction &amp; credits</span></div>
+
+  <h2 style="margin-top:0"><span class="n">6</span>Validation &amp; results</h2>
+  <table>
+    <thead><tr><th style="width:42%">Test</th><th>Result</th></tr></thead>
+    <tbody>
+    <tr><td><b>Own home capture</b> (one take, SOP-compliant), COLMAP 4.2 global mapper</td><td>284 / 292 frames registered (97 %) in <b>one</b> model, 0.67 px mean reprojection error, 6.5 min. Incremental mapping: 282 frames split in two models, 17 min.</td></tr>
+    <tr><td>Synthetic splat flat (6&#215;4 m, 2.6 m ceiling, door, table) moved by 15° yaw, 2° tilt, 3&#215; scale</td><td>Scale recovered as 3.001 (<b>0.04 %</b> error); ceiling and camera estimates agree (3.0012 vs 3.0015); walls axis-aligned; door walkable</td></tr>
+    <tr><td>ArUco marker rendered from 5 known poses</td><td>1.0028 m/unit vs a true 1.0000 (<b>0.3 %</b>); fewer than 3 views correctly refused</td></tr>
+    <tr><td>Wrong up hint (90° off, as ceiling-heavy footage gives)</td><td>Floor still recovered from the camera path; scale within 3 % (regression test)</td></tr>
+    <tr><td>Public RGB-D benchmark (Redwood indoor apartment, <code>import_rgbd.py</code>)</td><td>Walkable twin with 4.7 M splats (28.6 MB SOG), 41.6 m² walkable, <b>18 POIs labelled automatically</b> (4 rooms + bed, sofa, fridge, oven, TV…)</td></tr>
+    <tr><td>Trainer benchmark, 77-photo flat, 30k steps</td><td>splatfacto 27.72 dB vs gsplat-MCMC 23.09 dB PSNR in the same time: splatfacto is the default</td></tr>
+    <tr><td>Automated tests: <code>npm test</code> + 4 Python self-checks</td><td>Pathfinding, collision, turn hints, live capture metrics; navgrid, marker scale, preflight, coach (stubbed AI)</td></tr>
+    <tr><td><b>Home twin quality</b> (held-out views) &amp; viewer FPS</td><td>PSNR <span class="todo">__ dB</span> · SSIM <span class="todo">__</span> · LPIPS <span class="todo">__</span> · <span class="todo">__</span> M splats · <span class="todo">__</span> MB · <span class="todo">__</span> FPS on <span class="todo">GPU / laptop</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="two">
+    <div>
+      <h2><span class="n">7</span>Built for Rounds 2 &amp; 3</h2>
+      <ul>
+        <li><b>POIs</b>: auto-labelled from a COCO detector (Faster R-CNN), placed in 3D from depth, clustered, kept only when seen from 3+ views; rooms are inferred from contents (a bed makes a bedroom). Press <code>T</code> to tag at the crosshair; labels reveal on click or gaze.</li>
+        <li><b>Search</b>: ranked fuzzy match (exact &gt; prefix &gt; word-prefix &gt; substring &gt; subsequence) with distances.</li>
+        <li><b>Routing</b>: 8-connected A* (octile heuristic, no corner cutting) on a grid inflated by a body margin, falling back to the raw grid for tight doors; line-of-sight smoothing; animated floor chevrons; re-plans as you walk.</li>
+        <li><b>AR (finale)</b>: the twin is metric and gravity-aligned, so WebXR needs only one rigid transform from phone tracking to twin (QR anchor at the entrance); the A* route becomes arrows on the real floor.</li>
+      </ul>
+    </div>
+    <div>
+      <h2><span class="n">8</span>Reproduce it</h2>
+<pre><span class="c"># one-time setup: docs/SETUP.md (COLMAP, ffmpeg, nerfstudio)</span>
+<span class="k">cd</span> web &amp;&amp; npm install &amp;&amp; npm run dev
+<span class="c">#  -> localhost:5173 (procedural demo home)</span>
+
+<span class="c"># rebuild a twin from the sample capture</span>
+python pipeline/wayfarer.py <span class="k">test/sample/walk.mp4</span> \
+       --name sample --ceiling 2.75
+<span class="c">#  -> localhost:5173/?scene=sample</span>
+
+<span class="c"># or: double-click start.bat -> Wayfarer Studio,</span>
+<span class="c">#     drop the video, press "Build twin"</span>
+
+<span class="c"># tests</span>
+<span class="k">cd</span> web &amp;&amp; npm test
+python pipeline/test_navgrid.py</pre>
+      <p style="font-size:7.4pt">Sample data for judges: <code>test/</code> in the repository <span class="todo">add path / Drive link</span>. Hardware used: RTX 4070 Laptop (8 GB) or a free Kaggle GPU.</p>
+    </div>
+  </div>
+
+  <h2><span class="n">9</span>Technology stack &amp; open-source credits</h2>
+  <table>
+    <thead><tr><th>Layer</th><th>Tools (licence)</th><th>Our original work</th></tr></thead>
+    <tbody>
+    <tr><td>Capture</td><td>Ollama + Qwen2.5-VL (Apache-2.0), optional Claude API; browser DeviceMotion</td><td>Capture Coach, live checks, preflight gate, retake planner</td></tr>
+    <tr><td>Reconstruction</td><td>FFmpeg (LGPL), COLMAP / GLOMAP (BSD), nerfstudio, gsplat (Apache-2.0), OpenCV ArUco (Apache-2.0), LaMa (Apache-2.0), torchvision (BSD), Difix3D (NVIDIA, research use)</td><td>Orchestrator, frame picker, stray-camera filter, navgrid builder, marker scale, depth carving, surface fill, auto-POIs</td></tr>
+    <tr><td>Web</td><td>three.js, Spark, PlayCanvas splat-transform, Vite (all MIT)</td><td>Viewer, player &amp; collision, minimap, POIs, search, A* navigation</td></tr>
+    </tbody>
+  </table>
+
+  <div class="foot"><span><b>Wayfarer</b> · Technical Abstract · Round 1</span><span>Team ID: ____________</span><span>5 / 5</span></div>
+</section>
+
+</body>
+</html>
