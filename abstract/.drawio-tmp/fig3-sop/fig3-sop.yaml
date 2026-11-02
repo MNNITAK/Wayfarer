@@ -1,0 +1,83 @@
+meta:
+  profile: academic-paper
+  figureType: workflow
+  theme: academic-color
+  palette: c4-blue
+  layout: horizontal
+  font:
+    primary: "Helvetica, Arial, sans-serif"
+    cjk: "Helvetica, Arial, sans-serif"
+    formula: "Helvetica, Arial, sans-serif"
+  title: "Standard operating procedure"
+  description: "Operator and PC steps from installation to the published twin, with the two retake loops."
+  legend: "Dark blue: done by the operator with the phone or browser. Light blue: done on the PC. Sand diamonds: checks."
+
+nodes:
+  - id: s1
+    label: "1 Install\ndocs/SETUP.md"
+    type: process
+    bounds: { x: 20, y: 40, width: 160, height: 56 }
+    style: { fillColor: "#EAF2FB", strokeColor: "#438DD5", fontColor: "#1A1A1A", fontSize: 15 }
+  - id: s2
+    label: "2 Prepare space\nlights, doors, marker"
+    type: process
+    bounds: { x: 220, y: 40, width: 160, height: 56 }
+    style: { fillColor: "#D6E4F2", strokeColor: "#08427B", fontColor: "#1A1A1A", fontSize: 15 }
+  - id: s3
+    label: "3 Phone settings\n1x lens, AE/AF lock"
+    type: process
+    bounds: { x: 420, y: 40, width: 160, height: 56 }
+    style: { fillColor: "#D6E4F2", strokeColor: "#08427B", fontColor: "#1A1A1A", fontSize: 15 }
+  - id: s4
+    label: "4 Film\nSOP capture path"
+    type: process
+    bounds: { x: 620, y: 40, width: 160, height: 56 }
+    style: { fillColor: "#D6E4F2", strokeColor: "#08427B", fontColor: "#1A1A1A", fontSize: 15 }
+  - id: s5
+    label: "5 Pre-flight\npreflight.py"
+    type: process
+    bounds: { x: 820, y: 40, width: 160, height: 56 }
+    style: { fillColor: "#EAF2FB", strokeColor: "#438DD5", fontColor: "#1A1A1A", fontSize: 15 }
+  - id: d1
+    label: "Take\npasses?"
+    type: decision
+    bounds: { x: 835, y: 170, width: 130, height: 80 }
+    style: { fillColor: "#F6F0DA", strokeColor: "#9C8A2E", fontColor: "#1A1A1A", fontSize: 15 }
+  - id: r1
+    label: "Film short\nretake clips"
+    type: process
+    bounds: { x: 1060, y: 182, width: 140, height: 56 }
+    style: { fillColor: "#D6E4F2", strokeColor: "#08427B", fontColor: "#1A1A1A", fontSize: 15 }
+  - id: s6
+    label: "6 Build twin\nStudio or CLI"
+    type: process
+    bounds: { x: 620, y: 182, width: 160, height: 56 }
+    style: { fillColor: "#EAF2FB", strokeColor: "#438DD5", fontColor: "#1A1A1A", fontSize: 15 }
+  - id: d2
+    label: "7 Gates\nOK?"
+    type: decision
+    bounds: { x: 435, y: 170, width: 130, height: 80 }
+    style: { fillColor: "#F6F0DA", strokeColor: "#9C8A2E", fontColor: "#1A1A1A", fontSize: 15 }
+  - id: r2
+    label: "Re-film marker /\nre-measure ceiling"
+    type: process
+    bounds: { x: 420, y: 310, width: 160, height: 56 }
+    style: { fillColor: "#D6E4F2", strokeColor: "#08427B", fontColor: "#1A1A1A", fontSize: 15 }
+  - id: s8
+    label: "8 Open viewer\n?scene=name"
+    type: terminal
+    bounds: { x: 200, y: 182, width: 160, height: 56 }
+    style: { fillColor: "#D6E4F2", strokeColor: "#08427B", fontColor: "#1A1A1A", fontSize: 15 }
+
+edges:
+  - { from: s1, to: s2, type: primary, style: { fontSize: 13, fontColor: "#333333" } }
+  - { from: s2, to: s3, type: primary, style: { fontSize: 13, fontColor: "#333333" } }
+  - { from: s3, to: s4, type: primary, style: { fontSize: 13, fontColor: "#333333" } }
+  - { from: s4, to: s5, type: primary, label: "clips", style: { fontSize: 13, fontColor: "#333333" } }
+  - { from: s5, to: d1, type: primary, label: "report", style: { fontSize: 13, fontColor: "#333333" } }
+  - { from: d1, to: r1, type: primary, label: "no", style: { fontSize: 13, fontColor: "#333333" } }
+  - { from: r1, to: s5, type: primary, label: "add clips", waypoints: [{ x: 1130, y: 68 }], style: { fontSize: 13, fontColor: "#333333" } }
+  - { from: d1, to: s6, type: primary, label: "yes", style: { fontSize: 13, fontColor: "#333333" } }
+  - { from: s6, to: d2, type: primary, label: "log", style: { fontSize: 13, fontColor: "#333333" } }
+  - { from: d2, to: r2, type: primary, label: "no", style: { fontSize: 13, fontColor: "#333333" } }
+  - { from: d2, to: s8, type: primary, label: "yes", style: { fontSize: 13, fontColor: "#333333" } }

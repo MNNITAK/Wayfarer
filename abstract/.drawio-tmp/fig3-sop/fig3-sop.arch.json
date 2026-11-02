@@ -1,0 +1,148 @@
+{
+  "version": 1,
+  "title": "Standard operating procedure",
+  "type": "academic-diagram",
+  "source": "generated",
+  "profile": "academic-paper",
+  "theme": "academic-color",
+  "layout": "horizontal",
+  "counts": {
+    "nodes": 11,
+    "edges": 11,
+    "modules": 0
+  },
+  "nodes": [
+    {
+      "id": "s1",
+      "label": "1 Install\ndocs/SETUP.md",
+      "type": "process"
+    },
+    {
+      "id": "s2",
+      "label": "2 Prepare space\nlights, doors, marker",
+      "type": "process"
+    },
+    {
+      "id": "s3",
+      "label": "3 Phone settings\n1x lens, AE/AF lock",
+      "type": "process"
+    },
+    {
+      "id": "s4",
+      "label": "4 Film\nSOP capture path",
+      "type": "process"
+    },
+    {
+      "id": "s5",
+      "label": "5 Pre-flight\npreflight.py",
+      "type": "process"
+    },
+    {
+      "id": "d1",
+      "label": "Take\npasses?",
+      "type": "decision"
+    },
+    {
+      "id": "r1",
+      "label": "Film short\nretake clips",
+      "type": "process"
+    },
+    {
+      "id": "s6",
+      "label": "6 Build twin\nStudio or CLI",
+      "type": "process"
+    },
+    {
+      "id": "d2",
+      "label": "7 Gates\nOK?",
+      "type": "decision"
+    },
+    {
+      "id": "r2",
+      "label": "Re-film marker /\nre-measure ceiling",
+      "type": "process"
+    },
+    {
+      "id": "s8",
+      "label": "8 Open viewer\n?scene=name",
+      "type": "terminal"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": "s1",
+      "to": "s2",
+      "type": "primary"
+    },
+    {
+      "id": "edge-2",
+      "from": "s2",
+      "to": "s3",
+      "type": "primary"
+    },
+    {
+      "id": "edge-3",
+      "from": "s3",
+      "to": "s4",
+      "type": "primary"
+    },
+    {
+      "id": "edge-4",
+      "from": "s4",
+      "to": "s5",
+      "type": "primary",
+      "label": "clips"
+    },
+    {
+      "id": "edge-5",
+      "from": "s5",
+      "to": "d1",
+      "type": "primary",
+      "label": "report"
+    },
+    {
+      "id": "edge-6",
+      "from": "d1",
+      "to": "r1",
+      "type": "primary",
+      "label": "no"
+    },
+    {
+      "id": "edge-7",
+      "from": "r1",
+      "to": "s5",
+      "type": "primary",
+      "label": "add clips"
+    },
+    {
+      "id": "edge-8",
+      "from": "d1",
+      "to": "s6",
+      "type": "primary",
+      "label": "yes"
+    },
+    {
+      "id": "edge-9",
+      "from": "s6",
+      "to": "d2",
+      "type": "primary",
+      "label": "log"
+    },
+    {
+      "id": "edge-10",
+      "from": "d2",
+      "to": "r2",
+      "type": "primary",
+      "label": "no"
+    },
+    {
+      "id": "edge-11",
+      "from": "d2",
+      "to": "s8",
+      "type": "primary",
+      "label": "yes"
+    }
+  ],
+  "modules": []
+}
