@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "drawio": {
+      "source": "bahayonghang/drawio-skills",
+      "sourceType": "github",
+      "skillPath": "skills/drawio/SKILL.md",
+      "computedHash": "7136e8aed5e720f5061c6026307d0731d6c271520025de9af6a9a022fbd9969f"
+    },
+    "drawio-academic-skills": {
+      "source": "bahayonghang/drawio-skills",
+      "sourceType": "github",
+      "skillPath": "skills/drawio-academic-skills/SKILL.md",
+      "computedHash": "20b01653257c6a68025ffd8ba6a755ec632fb69012d9768b30672aa0b4db18fe"
+    },
+    "scientific-writing": {
+      "source": "K-Dense-AI/claude-scientific-writer",
+      "sourceType": "github",
+      "skillPath": "skills/scientific-writing/SKILL.md",
+      "computedHash": "0c899a393c714f3c635ddaacae84560d60cd02e2b65ba5f0c7e3d17afc8205cc"
+    }
+  }
+}
