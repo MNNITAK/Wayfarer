@@ -1,0 +1,376 @@
+meta:
+  profile: academic-paper
+  figureType: architecture
+  theme: academic-color
+  palette: c4-blue
+  layout: horizontal
+  font:
+    primary: Helvetica, Arial, sans-serif
+    cjk: Helvetica, Arial, sans-serif
+    formula: Helvetica, Arial, sans-serif
+  title: Wayfarer system architecture
+  description: Three tiers (capture, processing, viewing) with the real components and the interfaces between them.
+  legend: >-
+    Dark blue: phone and browser side. Light blue: processing on the PC. Grey: data artifacts. Ellipses are people;
+    dashed arrows carry data.
+nodes:
+  - id: lane_cap
+    label: Capture (phone)
+    type: process
+    bounds:
+      x: 20
+      'y': 20
+      width: 230
+      height: 450
+    style:
+      fillColor: '#F7F9FC'
+      strokeColor: '#B8C2CC'
+      fontSize: 15
+      fontColor: '#1A1A1A'
+      bold: true
+      align: left
+      verticalAlign: top
+      spacingLeft: 10
+      spacingTop: 6
+  - id: lane_pro
+    label: Processing (PC / GPU)
+    type: process
+    bounds:
+      x: 280
+      'y': 20
+      width: 500
+      height: 450
+    style:
+      fillColor: '#F7F9FC'
+      strokeColor: '#B8C2CC'
+      fontSize: 15
+      fontColor: '#1A1A1A'
+      bold: true
+      align: left
+      verticalAlign: top
+      spacingLeft: 10
+      spacingTop: 6
+  - id: lane_view
+    label: Viewing (any browser)
+    type: process
+    bounds:
+      x: 810
+      'y': 20
+      width: 390
+      height: 450
+    style:
+      fillColor: '#F7F9FC'
+      strokeColor: '#B8C2CC'
+      fontSize: 15
+      fontColor: '#1A1A1A'
+      bold: true
+      align: left
+      verticalAlign: top
+      spacingLeft: 10
+      spacingTop: 6
+  - id: operator
+    label: |-
+      Operator with
+      smartphone
+    type: user
+    bounds:
+      x: 40
+      'y': 90
+      width: 190
+      height: 56
+    style:
+      fillColor: '#D6E4F2'
+      strokeColor: '#08427B'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: coach
+    label: |-
+      Capture Coach
+      capture.html
+    type: service
+    bounds:
+      x: 40
+      'y': 190
+      width: 190
+      height: 56
+    style:
+      fillColor: '#D6E4F2'
+      strokeColor: '#08427B'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: video
+    label: |-
+      Video clips +
+      scale references
+    type: document
+    bounds:
+      x: 40
+      'y': 290
+      width: 190
+      height: 60
+    style:
+      fillColor: '#EDEDED'
+      strokeColor: '#686868'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: vlm
+    label: |-
+      Vision model
+      Ollama / Claude API
+    type: service
+    bounds:
+      x: 300
+      'y': 90
+      width: 200
+      height: 56
+    style:
+      fillColor: '#EAF2FB'
+      strokeColor: '#438DD5'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: server
+    label: |-
+      Job server
+      server.py :8765
+    type: service
+    bounds:
+      x: 300
+      'y': 190
+      width: 200
+      height: 56
+    style:
+      fillColor: '#EAF2FB'
+      strokeColor: '#438DD5'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: studio
+    label: |-
+      Wayfarer Studio
+      upload.html
+    type: service
+    bounds:
+      x: 300
+      'y': 290
+      width: 200
+      height: 56
+    style:
+      fillColor: '#EAF2FB'
+      strokeColor: '#438DD5'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: preflight
+    label: |-
+      Pre-flight check
+      preflight.py
+    type: service
+    bounds:
+      x: 560
+      'y': 190
+      width: 200
+      height: 56
+    style:
+      fillColor: '#EAF2FB'
+      strokeColor: '#438DD5'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: orch
+    label: |-
+      Orchestrator
+      wayfarer.py
+    type: service
+    bounds:
+      x: 560
+      'y': 290
+      width: 200
+      height: 56
+    style:
+      fillColor: '#EAF2FB'
+      strokeColor: '#438DD5'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: pkg
+    label: |-
+      Scene package
+      scene.json + scene.sog
+    type: database
+    bounds:
+      x: 560
+      'y': 382
+      width: 200
+      height: 86
+    style:
+      fillColor: '#EDEDED'
+      strokeColor: '#686868'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: visitor
+    label: Remote visitor
+    type: user
+    bounds:
+      x: 830
+      'y': 90
+      width: 170
+      height: 56
+    style:
+      fillColor: '#D6E4F2'
+      strokeColor: '#08427B'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: app
+    label: |-
+      Viewer main.js
+      three.js + Spark LoD
+    type: service
+    bounds:
+      x: 830
+      'y': 190
+      width: 170
+      height: 56
+    style:
+      fillColor: '#D6E4F2'
+      strokeColor: '#08427B'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: player
+    label: |-
+      player.js
+      WASD, collision
+    type: service
+    bounds:
+      x: 1050
+      'y': 150
+      width: 130
+      height: 50
+    style:
+      fillColor: '#D6E4F2'
+      strokeColor: '#08427B'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: nav
+    label: |-
+      nav.js
+      grid, A*
+    type: service
+    bounds:
+      x: 1050
+      'y': 236
+      width: 130
+      height: 50
+    style:
+      fillColor: '#D6E4F2'
+      strokeColor: '#08427B'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: host
+    label: |-
+      Static host (Vercel)
+      Vite build
+    type: service
+    bounds:
+      x: 830
+      'y': 395
+      width: 170
+      height: 56
+    style:
+      fillColor: '#D6E4F2'
+      strokeColor: '#08427B'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+edges:
+  - from: operator
+    to: coach
+    type: primary
+    label: films
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: coach
+    to: video
+    type: primary
+    label: records
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: coach
+    to: server
+    type: primary
+    label: /api/sessions
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: video
+    to: studio
+    type: primary
+    label: upload
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: studio
+    to: server
+    type: primary
+    label: /api/jobs
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: server
+    to: vlm
+    type: data
+    label: plan, verify
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: server
+    to: preflight
+    type: primary
+    label: review take
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: preflight
+    to: orch
+    type: primary
+    label: pass → build
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: orch
+    to: pkg
+    type: primary
+    label: writes
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: pkg
+    to: host
+    type: data
+    label: deploy
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: host
+    to: app
+    type: primary
+    label: fetch
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: visitor
+    to: app
+    type: primary
+    label: opens URL
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: app
+    to: player
+    type: primary
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: app
+    to: nav
+    type: primary
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+modules: []

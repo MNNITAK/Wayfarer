@@ -1,0 +1,200 @@
+{
+  "version": 1,
+  "title": "Wayfarer system architecture",
+  "type": "academic-diagram",
+  "source": "generated",
+  "profile": "academic-paper",
+  "theme": "academic-color",
+  "layout": "horizontal",
+  "counts": {
+    "nodes": 17,
+    "edges": 14,
+    "modules": 0
+  },
+  "nodes": [
+    {
+      "id": "lane_cap",
+      "label": "Capture (phone)",
+      "type": "process"
+    },
+    {
+      "id": "lane_pro",
+      "label": "Processing (PC / GPU)",
+      "type": "process"
+    },
+    {
+      "id": "lane_view",
+      "label": "Viewing (any browser)",
+      "type": "process"
+    },
+    {
+      "id": "operator",
+      "label": "Operator with\nsmartphone",
+      "type": "user"
+    },
+    {
+      "id": "coach",
+      "label": "Capture Coach\ncapture.html",
+      "type": "service"
+    },
+    {
+      "id": "video",
+      "label": "Video clips +\nscale references",
+      "type": "document"
+    },
+    {
+      "id": "vlm",
+      "label": "Vision model\nOllama / Claude API",
+      "type": "service"
+    },
+    {
+      "id": "server",
+      "label": "Job server\nserver.py :8765",
+      "type": "service"
+    },
+    {
+      "id": "studio",
+      "label": "Wayfarer Studio\nupload.html",
+      "type": "service"
+    },
+    {
+      "id": "preflight",
+      "label": "Pre-flight check\npreflight.py",
+      "type": "service"
+    },
+    {
+      "id": "orch",
+      "label": "Orchestrator\nwayfarer.py",
+      "type": "service"
+    },
+    {
+      "id": "pkg",
+      "label": "Scene package\nscene.json + scene.sog",
+      "type": "database"
+    },
+    {
+      "id": "visitor",
+      "label": "Remote visitor",
+      "type": "user"
+    },
+    {
+      "id": "app",
+      "label": "Viewer main.js\nthree.js + Spark LoD",
+      "type": "service"
+    },
+    {
+      "id": "player",
+      "label": "player.js\nWASD, collision",
+      "type": "service"
+    },
+    {
+      "id": "nav",
+      "label": "nav.js\ngrid, A*",
+      "type": "service"
+    },
+    {
+      "id": "host",
+      "label": "Static host (Vercel)\nVite build",
+      "type": "service"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": "operator",
+      "to": "coach",
+      "type": "primary",
+      "label": "films"
+    },
+    {
+      "id": "edge-2",
+      "from": "coach",
+      "to": "video",
+      "type": "primary",
+      "label": "records"
+    },
+    {
+      "id": "edge-3",
+      "from": "coach",
+      "to": "server",
+      "type": "primary",
+      "label": "/api/sessions"
+    },
+    {
+      "id": "edge-4",
+      "from": "video",
+      "to": "studio",
+      "type": "primary",
+      "label": "upload"
+    },
+    {
+      "id": "edge-5",
+      "from": "studio",
+      "to": "server",
+      "type": "primary",
+      "label": "/api/jobs"
+    },
+    {
+      "id": "edge-6",
+      "from": "server",
+      "to": "vlm",
+      "type": "data",
+      "label": "plan, verify"
+    },
+    {
+      "id": "edge-7",
+      "from": "server",
+      "to": "preflight",
+      "type": "primary",
+      "label": "review take"
+    },
+    {
+      "id": "edge-8",
+      "from": "preflight",
+      "to": "orch",
+      "type": "primary",
+      "label": "pass → build"
+    },
+    {
+      "id": "edge-9",
+      "from": "orch",
+      "to": "pkg",
+      "type": "primary",
+      "label": "writes"
+    },
+    {
+      "id": "edge-10",
+      "from": "pkg",
+      "to": "host",
+      "type": "data",
+      "label": "deploy"
+    },
+    {
+      "id": "edge-11",
+      "from": "host",
+      "to": "app",
+      "type": "primary",
+      "label": "fetch"
+    },
+    {
+      "id": "edge-12",
+      "from": "visitor",
+      "to": "app",
+      "type": "primary",
+      "label": "opens URL"
+    },
+    {
+      "id": "edge-13",
+      "from": "app",
+      "to": "player",
+      "type": "primary"
+    },
+    {
+      "id": "edge-14",
+      "from": "app",
+      "to": "nav",
+      "type": "primary"
+    }
+  ],
+  "modules": []
+}
