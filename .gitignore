@@ -8,3 +8,7 @@ work/
 *.pdf
 .DS_Store
 research_notes/
+
+# Round 1 deliverables are built PDFs we do want in git
+!abstract/*.pdf
+!abstract/figures/*.pdf
