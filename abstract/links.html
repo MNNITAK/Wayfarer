@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wayfarer: Links and Prototype</title>
+<style>
+  @page { size: A4; margin: 2cm; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font: 11pt/1.4 Charter, "Bitstream Charter", Georgia, serif; color: #111; margin: 0; }
+  header { text-align: center; border-bottom: 0.8pt solid #999; padding-bottom: 8pt; margin-bottom: 14pt; }
+  h1 { font: bold 18pt/1.2 Charter, Georgia, serif; margin: 0 0 4pt; }
+  .sub { font-size: 10pt; color: #333; margin: 0 0 4pt; }
+  .team { font-size: 10.5pt; margin: 0; }
+  h2 { font: bold 12.5pt Helvetica, Arial, sans-serif; margin: 16pt 0 6pt; }
+  .link { border: 0.8pt solid #9fb4cc; background: #f3f7fb; border-radius: 4pt; padding: 8pt 11pt; margin: 0 0 10pt; }
+  .link .label { font: bold 10pt Helvetica, Arial, sans-serif; color: #08427B; text-transform: uppercase; letter-spacing: .04em; }
+  .link a { display: block; font: 10.5pt Menlo, monospace; color: #1f3f73; margin: 3pt 0 3pt; word-break: break-all; text-decoration: none; }
+  .link p { margin: 0; font-size: 10pt; color: #333; }
+  table { border-collapse: collapse; width: 100%; font-size: 10pt; }
+  th, td { border: 0.6pt solid #c8d2dc; padding: 3pt 7pt; text-align: left; }
+  th { background: #eaf2fb; font-family: Helvetica, Arial, sans-serif; }
+  code { font: 9.5pt Menlo, monospace; }
+  .note { font-size: 9.5pt; color: #444; margin-top: 12pt; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Wayfarer: Links and Prototype</h1>
+  <p class="sub">Namma Space · Techfest 2026-27, IIT Bombay · Round 1: 3D Reconstruction &amp; Roaming</p>
+  <p class="team">Team <b>Simpletons</b> (ID TM-A30B5FE384F) · Ayush Jadaun (lead), Abhay Agarwal, Arnav Raj, Akshay Yadav</p>
+</header>
+
+<h2>1&nbsp;&nbsp;Links</h2>
+
+<div class="link">
+  <div class="label">Live web viewer (proof of concept)</div>
+  <a href="https://wayfarer-ten-kappa.vercel.app/">https://wayfarer-ten-kappa.vercel.app/</a>
+  <p>Zero-install, first-person walkthrough of the reconstructed apartment twin in any desktop browser (touch controls on phones).</p>
+</div>
+
+<div class="link">
+  <div class="label">Demonstration video</div>
+  <a href="https://drive.google.com/file/d/1haPZGPQqfS8M_v1reZNNYYvk4NMd-9Gs/view?usp=sharing">https://drive.google.com/file/d/1haPZGPQqfS8M_v1reZNNYYvk4NMd-9Gs/view?usp=sharing</a>
+  <p>Project scope, capture process and the 3D web walkthrough.</p>
+</div>
+
+<div class="link">
+  <div class="label">Code repository</div>
+  <a href="https://github.com/ayush-jadaun/Wayfarer">https://github.com/ayush-jadaun/Wayfarer</a>
+  <p>Pipeline (<code>pipeline/</code>), web viewer (<code>web/</code>), capture SOP (<code>docs/SOP.md</code>) and setup guide (<code>docs/SETUP.md</code>).</p>
+</div>
+
+<h2>2&nbsp;&nbsp;Using the web viewer</h2>
+<p>Click inside the viewer to capture the mouse, then:</p>
+<table>
+  <tr><th>Key</th><th>Action</th><th>Key</th><th>Action</th></tr>
+  <tr><td><code>W A S D</code></td><td>move</td><td>Mouse</td><td>look around</td></tr>
+  <tr><td><code>Shift</code></td><td>run</td><td><code>F</code></td><td>fly / walk</td></tr>
+  <tr><td><code>M</code></td><td>big map</td><td><code>G</code></td><td>blueprint overlay</td></tr>
+  <tr><td><code>/</code></td><td>search</td><td><code>Esc</code></td><td>free the mouse</td></tr>
+</table>
+
+<p class="note">The live demo is the "fast apartment" twin built by the Wayfarer pipeline from the public Redwood indoor apartment RGB-D scan: 3,276,779 Gaussian splats, 38.4 m² walkable floor, 18 automatically labelled points of interest. Walls and furniture block movement (collision against the occupancy grid).</p>
+</body>
+</html>
