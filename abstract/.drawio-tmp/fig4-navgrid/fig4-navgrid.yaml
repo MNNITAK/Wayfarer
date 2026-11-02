@@ -1,0 +1,70 @@
+meta:
+  profile: academic-paper
+  figureType: workflow
+  theme: academic-color
+  palette: c4-blue
+  layout: horizontal
+  font:
+    primary: "Helvetica, Arial, sans-serif"
+    cjk: "Helvetica, Arial, sans-serif"
+    formula: "Helvetica, Arial, sans-serif"
+  title: "Navigation-grid builder"
+  description: "navgrid.py turns an unscaled splat into a level, metric occupancy grid."
+  legend: "Light blue: navgrid.py stages. Grey: inputs and outputs."
+
+nodes:
+  - id: splat
+    label: "splat.ply +\ncamera poses"
+    type: document
+    bounds: { x: 20, y: 128, width: 150, height: 60 }
+    style: { fillColor: "#EDEDED", strokeColor: "#686868", fontColor: "#1A1A1A", fontSize: 15 }
+  - id: filter
+    label: "Filter floaters\nopacity < 0.3"
+    type: process
+    bounds: { x: 220, y: 130, width: 160, height: 56 }
+    style: { fillColor: "#EAF2FB", strokeColor: "#438DD5", fontColor: "#1A1A1A", fontSize: 15 }
+  - id: floor
+    label: "Floor RANSAC\nlevel to +Y, y = 0"
+    type: process
+    bounds: { x: 420, y: 130, width: 160, height: 56 }
+    style: { fillColor: "#EAF2FB", strokeColor: "#438DD5", fontColor: "#1A1A1A", fontSize: 15 }
+  - id: scale
+    label: "Metric scale\npriority + 12 % check"
+    type: process
+    bounds: { x: 610, y: 130, width: 180, height: 56 }
+    style: { fillColor: "#EAF2FB", strokeColor: "#438DD5", fontColor: "#1A1A1A", fontSize: 15 }
+  - id: refs
+    label: "ArUco marker, ceiling H,\ncamera height 1.4 m"
+    type: document
+    bounds: { x: 610, y: 6, width: 180, height: 60 }
+    style: { fillColor: "#EDEDED", strokeColor: "#686868", fontColor: "#1A1A1A", fontSize: 15 }
+  - id: yaw
+    label: "Manhattan yaw\nwalls on axes"
+    type: process
+    bounds: { x: 880, y: 130, width: 160, height: 56 }
+    style: { fillColor: "#EAF2FB", strokeColor: "#438DD5", fontColor: "#1A1A1A", fontSize: 15 }
+  - id: band
+    label: "Obstacles 0.12-1.9 m\n+ depth carving"
+    type: process
+    bounds: { x: 880, y: 260, width: 160, height: 56 }
+    style: { fillColor: "#EAF2FB", strokeColor: "#438DD5", fontColor: "#1A1A1A", fontSize: 15 }
+  - id: walk
+    label: "Walkable floor\nlinked to camera path"
+    type: process
+    bounds: { x: 590, y: 260, width: 180, height: 56 }
+    style: { fillColor: "#EAF2FB", strokeColor: "#438DD5", fontColor: "#1A1A1A", fontSize: 15 }
+  - id: out
+    label: "scene.json grid\n+ scene.sog"
+    type: database
+    bounds: { x: 290, y: 243, width: 190, height: 90 }
+    style: { fillColor: "#EDEDED", strokeColor: "#686868", fontColor: "#1A1A1A", fontSize: 15 }
+
+edges:
+  - { from: splat, to: filter, type: primary, style: { fontSize: 13, fontColor: "#333333" } }
+  - { from: filter, to: floor, type: primary, style: { fontSize: 13, fontColor: "#333333" } }
+  - { from: floor, to: scale, type: primary, style: { fontSize: 13, fontColor: "#333333" } }
+  - { from: refs, to: scale, type: data, label: "scale references", style: { fontSize: 13, fontColor: "#333333" } }
+  - { from: scale, to: yaw, type: primary, label: "metres", style: { fontSize: 13, fontColor: "#333333" } }
+  - { from: yaw, to: band, type: primary, style: { fontSize: 13, fontColor: "#333333" } }
+  - { from: band, to: walk, type: primary, label: "10 cm cells", style: { fontSize: 13, fontColor: "#333333" } }
+  - { from: walk, to: out, type: primary, style: { fontSize: 13, fontColor: "#333333" } }

@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "title": "Navigation-grid builder",
+  "type": "academic-diagram",
+  "source": "generated",
+  "profile": "academic-paper",
+  "theme": "academic-color",
+  "layout": "horizontal",
+  "counts": {
+    "nodes": 9,
+    "edges": 8,
+    "modules": 0
+  },
+  "nodes": [
+    {
+      "id": "splat",
+      "label": "splat.ply +\ncamera poses",
+      "type": "document"
+    },
+    {
+      "id": "filter",
+      "label": "Filter floaters\nopacity < 0.3",
+      "type": "process"
+    },
+    {
+      "id": "floor",
+      "label": "Floor RANSAC\nlevel to +Y, y = 0",
+      "type": "process"
+    },
+    {
+      "id": "scale",
+      "label": "Metric scale\npriority + 12 % check",
+      "type": "process"
+    },
+    {
+      "id": "refs",
+      "label": "ArUco marker, ceiling H,\ncamera height 1.4 m",
+      "type": "document"
+    },
+    {
+      "id": "yaw",
+      "label": "Manhattan yaw\nwalls on axes",
+      "type": "process"
+    },
+    {
+      "id": "band",
+      "label": "Obstacles 0.12-1.9 m\n+ depth carving",
+      "type": "process"
+    },
+    {
+      "id": "walk",
+      "label": "Walkable floor\nlinked to camera path",
+      "type": "process"
+    },
+    {
+      "id": "out",
+      "label": "scene.json grid\n+ scene.sog",
+      "type": "database"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": "splat",
+      "to": "filter",
+      "type": "primary"
+    },
+    {
+      "id": "edge-2",
+      "from": "filter",
+      "to": "floor",
+      "type": "primary"
+    },
+    {
+      "id": "edge-3",
+      "from": "floor",
+      "to": "scale",
+      "type": "primary"
+    },
+    {
+      "id": "edge-4",
+      "from": "refs",
+      "to": "scale",
+      "type": "data",
+      "label": "scale references"
+    },
+    {
+      "id": "edge-5",
+      "from": "scale",
+      "to": "yaw",
+      "type": "primary",
+      "label": "metres"
+    },
+    {
+      "id": "edge-6",
+      "from": "yaw",
+      "to": "band",
+      "type": "primary"
+    },
+    {
+      "id": "edge-7",
+      "from": "band",
+      "to": "walk",
+      "type": "primary",
+      "label": "10 cm cells"
+    },
+    {
+      "id": "edge-8",
+      "from": "walk",
+      "to": "out",
+      "type": "primary"
+    }
+  ],
+  "modules": []
+}
