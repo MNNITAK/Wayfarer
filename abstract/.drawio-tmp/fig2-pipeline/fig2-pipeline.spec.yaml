@@ -1,0 +1,234 @@
+meta:
+  profile: academic-paper
+  figureType: workflow
+  theme: academic-color
+  palette: c4-blue
+  layout: horizontal
+  font:
+    primary: Helvetica, Arial, sans-serif
+    cjk: Helvetica, Arial, sans-serif
+    formula: Helvetica, Arial, sans-serif
+  title: Reconstruction pipeline
+  description: Five resumable steps of wayfarer.py with the artifacts passed between them.
+  legend: 'Light blue: processing steps. Grey: data. Sand diamonds: automatic gates.'
+nodes:
+  - id: video
+    label: |-
+      Phone video(s)
+      or photo folder
+    type: document
+    bounds:
+      x: 20
+      'y': 108
+      width: 150
+      height: 60
+    style:
+      fillColor: '#EDEDED'
+      strokeColor: '#686868'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: frames
+    label: |-
+      1 frames
+      ffmpeg + Laplacian
+    type: process
+    bounds:
+      x: 240
+      'y': 110
+      width: 160
+      height: 56
+    style:
+      fillColor: '#EAF2FB'
+      strokeColor: '#438DD5'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: sfm
+    label: |-
+      2 sfm
+      COLMAP 4.2 global
+    type: process
+    bounds:
+      x: 520
+      'y': 110
+      width: 160
+      height: 56
+    style:
+      fillColor: '#EAF2FB'
+      strokeColor: '#438DD5'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: gate
+    label: |-
+      ≥ 50 %
+      registered?
+    type: decision
+    bounds:
+      x: 760
+      'y': 98
+      width: 130
+      height: 80
+    style:
+      fillColor: '#F6F0DA'
+      strokeColor: '#9C8A2E'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: stop
+    label: stop with hint
+    type: terminal
+    bounds:
+      x: 760
+      'y': 10
+      width: 130
+      height: 40
+    style:
+      fillColor: '#EDEDED'
+      strokeColor: '#686868'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: train
+    label: |-
+      3 train
+      splatfacto (gsplat)
+    type: process
+    bounds:
+      x: 960
+      'y': 110
+      width: 160
+      height: 56
+    style:
+      fillColor: '#EAF2FB'
+      strokeColor: '#438DD5'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: export
+    label: |-
+      4 export
+      ns-export + ns-eval
+    type: process
+    bounds:
+      x: 960
+      'y': 260
+      width: 160
+      height: 56
+    style:
+      fillColor: '#EAF2FB'
+      strokeColor: '#438DD5'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: navgrid
+    label: |-
+      5 navgrid
+      navgrid.py
+    type: process
+    bounds:
+      x: 640
+      'y': 260
+      width: 160
+      height: 56
+    style:
+      fillColor: '#EAF2FB'
+      strokeColor: '#438DD5'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: post
+    label: |-
+      post-steps: autopoi,
+      surfaces, floorplan
+    type: process
+    bounds:
+      x: 640
+      'y': 390
+      width: 160
+      height: 56
+    style:
+      fillColor: '#EAF2FB'
+      strokeColor: '#438DD5'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+  - id: pkg
+    label: |-
+      Scene package
+      scene.json + scene.sog
+    type: database
+    bounds:
+      x: 260
+      'y': 244
+      width: 200
+      height: 94
+    style:
+      fillColor: '#EDEDED'
+      strokeColor: '#686868'
+      fontColor: '#1A1A1A'
+      fontSize: 15
+edges:
+  - from: video
+    to: frames
+    type: primary
+    label: clips
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: frames
+    to: sfm
+    type: primary
+    label: ≤ 500 sharp JPEGs
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: sfm
+    to: gate
+    type: primary
+    label: sparse/0
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: gate
+    to: stop
+    type: primary
+    label: 'no'
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: gate
+    to: train
+    type: primary
+    label: 'yes'
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: train
+    to: export
+    type: primary
+    label: checkpoint
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: export
+    to: navgrid
+    type: primary
+    label: splat.ply, metrics
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: navgrid
+    to: pkg
+    type: primary
+    label: grid, SOG, POIs
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: navgrid
+    to: post
+    type: primary
+    label: scene dir
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+  - from: post
+    to: pkg
+    type: data
+    label: POIs, textures, SVG
+    style:
+      fontSize: 13
+      fontColor: '#333333'
+modules: []
